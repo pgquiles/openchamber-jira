@@ -326,7 +326,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <thead><tr><th>Area</th><th>Current behaviour</th><th>Tracking</th></tr></thead>
           <tbody>
             <tr><td>Deployment</td><td>Jira Cloud only; Server and Data Center are refused.</td><td>—</td></tr>
-            <tr><td>Authoring</td><td>No create, edit, or delete; no assignee or priority changes.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a></td></tr>
+            <tr><td>Authoring</td><td>No create, edit, or delete; no assignee or priority changes. The tracker contract has no create or update method yet.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>, <a href="https://github.com/openchamber/openchamber/issues/7647" target="_blank" rel="noopener">openchamber#7647</a></td></tr>
             <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed here; Jira's error names them and the issue header opens Jira.</td><td>—</td></tr>
             <tr><td>Rate limits</td><td>Reads retry 429 and 503 with <code>Retry-After</code> (3 attempts, 10 s total). Writes are not retried, so nothing is duplicated; a wait past the budget fails with the reset time.</td><td>—</td></tr>
             <tr><td>Rich content</td><td>Media and attachments become links; panels and expandos keep their tone or title; status lozenges render bold. Media that is not an attachment opens only in Jira.</td><td>—</td></tr>
@@ -374,7 +374,7 @@ npm run zip         # openchamber-jira.zip</code></pre>
         <p>The queue, in the order that unlocks the most:</p>
         <ol>
           <li><strong>OAuth 2.0 3LO</strong> for organizations that block personal API tokens (<a href="https://github.com/pgquiles/openchamber-jira/issues/1" target="_blank" rel="noopener">#1</a>).</li>
-          <li><strong>Create and edit issues</strong> — needs the tracker contract to grow (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>).</li>
+          <li><strong>Create and edit issues</strong> — needs the tracker contract to grow (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>, upstream <a href="https://github.com/openchamber/openchamber/issues/7647" target="_blank" rel="noopener">openchamber#7647</a>).</li>
           <li><strong>Token health</strong> — expiry, scopes, and a clear needs-attention state (<a href="https://github.com/pgquiles/openchamber-jira/issues/3" target="_blank" rel="noopener">#3</a>).</li>
           <li><strong>Live verification</strong> against a real Jira Cloud site, and real screenshots (<a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">#12</a>).</li>
         </ol>
