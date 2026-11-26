@@ -157,7 +157,13 @@ const renderBlocks = (nodes: AdfNode[], context: RenderContext): string[] => {
 };
 
 const renderCell = (cell: AdfNode, context: RenderContext): string => (
-  renderBlocks(asNodes(cell.content), contextAt(context, 0)).join(' ').replace(/\n+/g, ' ').replace(/\|/g, '\\|').trim()
+  renderBlocks(asNodes(cell.content), contextAt(context, 0))
+    .join(' ')
+    .replace(/\n+/g, ' ')
+    // A backslash first, so escaping the pipe cannot double-escape it.
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .trim()
 );
 
 const renderBlock = (node: AdfNode, context: RenderContext): string | null => {
