@@ -856,6 +856,31 @@ var failureCode = (status) => {
     return "JIRA_UPSTREAM";
   return "JIRA_REJECTED";
 };
+var sentence = (detail) => {
+  const text = detail.trim();
+  if (text === "")
+    return "";
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+};
+var refusalMessage = (status, detail, waitMs) => {
+  const said = sentence(detail);
+  const lead = (opening) => said === "" ? `${opening}.` : `${opening}: ${said}`;
+  if (status === 401) {
+    const advice = /\bscopes?\b/i.test(detail) ? "The token is missing a scope this action needs; reconnect with a token that has it." : "It may have been revoked or expired; reconnect the account in Settings → Integrations.";
+    return `${lead("Jira refused the credential (401)")} ${advice}`;
+  }
+  if (status === 403) {
+    return `${lead("Jira answered 403")} The account or token does not have permission for this project; check the project role, the token scopes, or an organization policy.`;
+  }
+  if (status === 404) {
+    return `${lead("Jira answered 404")} The issue or project may be gone, or this account cannot see it.`;
+  }
+  if (status === 429) {
+    const wait = waitMs === null ? "" : ` Try again in ${Math.ceil(waitMs / 1000)} s.`;
+    return `${lead("Jira rate-limited the request (429)")}${wait}`;
+  }
+  return lead(`Jira answered ${status}`);
+};
 var epicChildrenJql = (key, fieldId) => {
   const escaped = escapeJqlString(key);
   const conditions = [`parent = "${escaped}"`];
@@ -973,17 +998,9 @@ var jiraFailure = (response) => {
   return { detail: response.body.trim().slice(0, 300), fields };
 };
 var serverFailure = (response) => {
-  if (response.status === 401) {
-    return new CallError("Jira refused the credential (401).", 401, { code: failureCode(401) });
-  }
   const { detail, fields } = jiraFailure(response);
-  const verb = response.status === 429 ? "Jira rate-limited the request" : "Jira answered";
-  const wait = retryAfterMs(response.headers);
-  const hint = wait === null ? "" : ` Try again in ${Math.ceil(wait / 1000)} s.`;
-  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : "."}${hint}`, response.status, {
-    code: failureCode(response.status),
-    fields
-  });
+  const message = refusalMessage(response.status, detail, retryAfterMs(response.headers));
+  return new CallError(message, response.status, { code: failureCode(response.status), fields });
 };
 var headerValue = (headers, name) => {
   if (!headers)
@@ -1303,6 +1320,12 @@ var handlers = {
     const id = textOf(me.accountId);
     if (!id)
       throw new CallError("Jira answered no account id for this credential.", 502, { code: "JIRA_MALFORMED" });
+    const projects = await api(call, "GET", "/rest/api/3/project/search", {
+      query: { action: "browse", maxResults: "1" }
+    });
+    if (!Array.isArray(projects.values) || projects.values.length === 0) {
+      throw new CallError("This Jira account cannot browse any project. Add it to a project, or check the token scopes, then connect again.", 403, { code: "NO_PROJECT_ACCESS" });
+    }
     const login = textOf(me.emailAddress) ?? textOf(me.displayName);
     const account = { id, login };
     const name = textOf(me.displayName);

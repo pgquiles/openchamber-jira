@@ -180,6 +180,52 @@ export const failureCode = (status: number): string => {
   return 'JIRA_REJECTED';
 };
 
+/** End a Jira message with a full stop, unless it already ends a sentence. */
+const sentence = (detail: string): string => {
+  const text = detail.trim();
+  if (text === '') return '';
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+};
+
+/**
+ * Jira's refusal as one sentence the user can act on: what happened, then the
+ * likely cause and the fix. The statuses the extension can explain get their
+ * own wording; anything else keeps Jira's answer as it came.
+ *
+ * Token expiry is deliberately absent: Jira exposes no expiry for a personal
+ * API token, so a 401 is reported as revoked or expired together.
+ */
+export const refusalMessage = (
+  status: number,
+  detail: string,
+  waitMs: number | null,
+): string => {
+  const said = sentence(detail);
+  const lead = (opening: string): string => (said === '' ? `${opening}.` : `${opening}: ${said}`);
+
+  if (status === 401) {
+    const advice = /\bscopes?\b/i.test(detail)
+      ? 'The token is missing a scope this action needs; reconnect with a token that has it.'
+      : 'It may have been revoked or expired; reconnect the account in Settings → Integrations.';
+    return `${lead('Jira refused the credential (401)')} ${advice}`;
+  }
+
+  if (status === 403) {
+    return `${lead('Jira answered 403')} The account or token does not have permission for this project; check the project role, the token scopes, or an organization policy.`;
+  }
+
+  if (status === 404) {
+    return `${lead('Jira answered 404')} The issue or project may be gone, or this account cannot see it.`;
+  }
+
+  if (status === 429) {
+    const wait = waitMs === null ? '' : ` Try again in ${Math.ceil(waitMs / 1_000)} s.`;
+    return `${lead('Jira rate-limited the request (429)')}${wait}`;
+  }
+
+  return lead(`Jira answered ${status}`);
+};
+
 /**
  * An epic's children: native `parent` covers team-managed projects and the
  * Epic Link custom field covers company-managed ones. Both are asked in one
