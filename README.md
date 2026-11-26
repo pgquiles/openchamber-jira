@@ -165,8 +165,9 @@ What an organization can still change:
   extension cannot override it. The account needs an exception, a service
   account, or OAuth.
 - **Expiry and revocation.** New tokens expire after one year by default, and
-  admins can revoke them earlier. Reconnect with a fresh token when Jira starts
-  answering 401.
+  admins can revoke them earlier. After a revocation Jira's search answers with
+  an empty result rather than 401, so a board that stops listing issues is the
+  usual symptom; create a new token and reconnect.
 - **Scopes.** A scoped token needs `read:jira-work`, `write:jira-work` and
   `read:jira-user`. A classic token works too, with the user's full access.
 - **Product access.** The account must still be a licensed Jira user with
@@ -183,6 +184,7 @@ manifest change for Jira.
 | Symptom | Likely cause |
 | --- | --- |
 | 401 after connecting | Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect. |
+| A board that worked now lists nothing | The token was revoked or expired after connecting. Jira answers a search with an empty result for an invalid credential, so the account can still read **Connected**; the board and the picker go empty. Create a new token and reconnect. |
 | 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
 | Empty picker | The default view is **open issues you can see**; check the state filter, project access, and that the Jira account is the one you expect. Choose **Assigned to me** to narrow it to your queue. |
 | Connected, but no issues show | Open the **issues board** (`Ctrl/Cmd+K` then `B`) and choose the **Jira** tab, or use **+ → Link Jira Issue** in the composer. Settings shows only the connection and mapping. Typing `@` opens file mentions, not Jira. |
@@ -293,10 +295,12 @@ Ordered by what unlocks the most:
    now; a second site needs the host to store an instance per account
    ([#9](https://github.com/pgquiles/openchamber-jira/issues/9),
    [openchamber#7653](https://github.com/openchamber/openchamber/issues/7653)).
-7. **Live verification and real screenshots** against a disposable Jira Cloud
-   site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)). The
-   repeatable checklist is in
-   [`docs/live-verification.md`](docs/live-verification.md).
+
+The 15-point [live verification checklist](docs/live-verification.md) was run
+against a disposable Jira Cloud site with the 0.3.0 release and OpenChamber
+2.8.0. Its results are recorded on
+[#12](https://github.com/pgquiles/openchamber-jira/issues/12), and the
+checklist stays in the repository for the next release.
 
 The website lives in `site/` and deploys to GitHub Pages from `main` through
 `.github/workflows/pages.yml`. The extension has its own CI: every pull request

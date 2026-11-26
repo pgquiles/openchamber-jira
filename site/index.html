@@ -67,7 +67,7 @@
         <div class="frame">
           <img src="assets/screenshots/issue-picker.png" alt="OpenChamber composer with the Jira issue picker open, showing issues assigned to the signed-in user" width="2880" height="1800" fetchpriority="high">
         </div>
-        <div class="hero-caption"><span class="dot"></span> The Jira picker in OpenChamber · preview with demo data</div>
+        <div class="hero-caption"><span class="dot"></span> The Jira picker in OpenChamber · captured on a Jira Cloud test site</div>
       </div>
     </div>
   </section>
@@ -159,33 +159,39 @@
           <h2>Three surfaces,<br>one <em>thread.</em></h2>
         </div>
         <div class="intro">
-          <p>The board's Jira tab, the composer picker, the issue panel, and the account card are the whole loop: find it, read it, move it, leave the context. The screenshots below are layouts rendered from demo data against OpenChamber 2.8.0.</p>
+          <p>The board's Jira tab, the composer picker, the issue panel, and the account card are the whole loop: find it, read it, move it, leave the context. The screenshots below are captures from OpenChamber 2.8.0 against a Jira Cloud test site.</p>
         </div>
       </div>
       <div class="shots">
-        <figure class="shot-card wide">
-          <div class="frame"><img src="assets/screenshots/issue-picker.png" alt="Jira issue picker open over the OpenChamber composer" width="2880" height="1800" loading="lazy"></div>
+        <figure class="shot-card">
+          <div class="frame"><img src="assets/screenshots/board.png" alt="OpenChamber issues board on the Jira tab, with the test project selected and its issues listed" width="2880" height="1800" loading="lazy"></div>
           <figcaption>
             <span class="cap-num">01</span>
+            <span class="cap-body"><b>Start on the board you already use</b>The Jira tab lists the project's issues, most recently updated first. Group, state, priority, and people filters become JQL.</span>
+          </figcaption>
+        </figure>
+        <figure class="shot-card">
+          <div class="frame"><img src="assets/screenshots/issue-picker.png" alt="Jira issue picker open over the OpenChamber composer" width="2880" height="1800" loading="lazy"></div>
+          <figcaption>
+            <span class="cap-num">02</span>
             <span class="cap-body"><b>Link an issue from the composer</b>The picker searches Jira as you type. People and state filters map to JQL, not to a local cache.</span>
           </figcaption>
         </figure>
         <figure class="shot-card">
-          <div class="frame"><img src="assets/screenshots/issue-panel.png" alt="Jira issue panel showing status, description, subtasks, comments, and available transitions" width="2360" height="1640" loading="lazy"></div>
+          <div class="frame"><img src="assets/screenshots/issue-panel.png" alt="Jira issue panel showing status, description, sub-issues, and comments" width="2880" height="1800" loading="lazy"></div>
           <figcaption>
-            <span class="cap-num">02</span>
-            <span class="cap-body"><b>Read and move it in the context panel</b>Description, subtasks, comments, available transitions, and the linked session — without opening Jira.</span>
+            <span class="cap-num">03</span>
+            <span class="cap-body"><b>Read and move it in the context panel</b>Description, sub-issues, comments, and the state control — without opening Jira.</span>
           </figcaption>
         </figure>
         <figure class="shot-card">
-          <div class="frame"><img src="assets/screenshots/account-card.png" alt="Settings integrations page with the Jira extension account connected" width="2640" height="1680" loading="lazy"></div>
+          <div class="frame"><img src="assets/screenshots/account-card.png" alt="Settings integrations page with the Jira extension account connected" width="2880" height="1800" loading="lazy"></div>
           <figcaption>
-            <span class="cap-num">03</span>
+            <span class="cap-num">04</span>
             <span class="cap-body"><b>Connect once, choose what syncs</b>The token stays in OpenChamber. Project mapping and session comments are opt-in.</span>
           </figcaption>
         </figure>
       </div>
-      <p class="demo-note"><span class="dot"></span> Previews use demo data, not a live Jira site. Replacing them with real captures is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">issue #12</a>.</p>
     </div>
   </section>
 
@@ -310,11 +316,6 @@
           <span class="r-num">#16</span><span class="r-title">Jira rail panel beside the chat</span>
           <span class="r-desc">Assigned issues, filters, and one selected issue in the right rail, with the board a click away. Needs a guest tracker read path upstream; <em>sketch included</em>.</span>
           <span class="r-labels"><span class="chip no">upstream</span><span class="chip info">jira</span></span>
-        </a></li>
-        <li><a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">
-          <span class="r-num">#12</span><span class="r-title">Live verification and real screenshots</span>
-          <span class="r-desc">Run the extension against a disposable Jira Cloud site, record the checklist, replace the demo previews.</span>
-          <span class="r-labels"><span class="chip warn">testing</span><span class="chip info">website</span></span>
         </a></li>
       </ul>
       <p style="margin-top:18px"><a href="https://github.com/pgquiles/openchamber-jira/issues" target="_blank" rel="noopener" style="font-weight:600;color:var(--jira)">All issues and labels →</a></p>

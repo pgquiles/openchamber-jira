@@ -142,6 +142,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <thead><tr><th>Symptom</th><th>What it usually means</th></tr></thead>
           <tbody>
             <tr><td>401</td><td>The token is wrong, expired, revoked, or blocked by an organization policy. Create a new token and reconnect.</td></tr>
+            <tr><td>A board that worked now lists nothing</td><td>The token was revoked or expired after connecting. Jira answers a search with an empty result for an invalid credential, so the account can still read “Connected”. Create a new token and reconnect.</td></tr>
             <tr><td>403</td><td>The account lacks a needed scope (scoped token) or Jira denied the call. Check scopes and site access.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL is Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
             <tr><td>Timeout or network error</td><td>OpenChamber's proxy could not reach the site. Check the URL, VPN, and proxy settings.</td></tr>
@@ -176,7 +177,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
         <p>What an organization can still change:</p>
         <ul>
           <li><strong>API token policy.</strong> An organization admin can block members from creating or using user API tokens, or cap their lifetime, through an Atlassian Guard authentication policy. When that is on, Jira answers 401/403 and the extension cannot override it. The account needs an exception, a service account, or OAuth.</li>
-          <li><strong>Expiry and revocation.</strong> New tokens expire after one year by default, and admins can revoke them earlier. Reconnect with a fresh token when Jira starts answering 401.</li>
+          <li><strong>Expiry and revocation.</strong> New tokens expire after one year by default, and admins can revoke them earlier. After a revocation Jira's search answers with an empty result rather than 401, so a board that stops listing issues is the usual symptom; create a new token and reconnect.</li>
           <li><strong>Scopes.</strong> A scoped token needs <code>read:jira-work</code>, <code>write:jira-work</code>, and <code>read:jira-user</code>. A classic token works too, with the user's full access.</li>
           <li><strong>Product access.</strong> The account must still be a licensed Jira user with permission to browse the projects.</li>
         </ul>
@@ -376,7 +377,6 @@ npm run zip         # openchamber-jira.zip</code></pre>
           <li><strong>OAuth 2.0 3LO</strong> for organizations that block personal API tokens (<a href="https://github.com/pgquiles/openchamber-jira/issues/1" target="_blank" rel="noopener">#1</a>).</li>
           <li><strong>Create and edit issues</strong> — needs the tracker contract to grow (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>, upstream <a href="https://github.com/openchamber/openchamber/issues/7647" target="_blank" rel="noopener">openchamber#7647</a>).</li>
           <li><strong>Token health</strong> — expiry, scopes, and a clear needs-attention state (<a href="https://github.com/pgquiles/openchamber-jira/issues/3" target="_blank" rel="noopener">#3</a>).</li>
-          <li><strong>Live verification</strong> against a real Jira Cloud site, and real screenshots (<a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">#12</a>).</li>
         </ol>
         <p>See all <a href="https://github.com/pgquiles/openchamber-jira/issues" target="_blank" rel="noopener">open issues and labels</a> for the full list.</p>
         <p class="next-prev"><a href="index.html">← Back to the overview</a><a href="index.html#install">Install →</a></p>
