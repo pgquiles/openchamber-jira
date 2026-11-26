@@ -1,9 +1,10 @@
 # openchamber-jira
 
-A Jira Cloud tracker for [OpenChamber](https://openchamber.dev). It adds a Jira
-panel to the right rail and makes Jira issues work wherever OpenChamber expects
-a tracker: the `@` reference picker, issue previews, state changes, session
-comments, and project mapping.
+A Jira Cloud tracker for [OpenChamber](https://openchamber.dev). It adds Jira
+wherever OpenChamber expects a tracker: a **Jira** tab on the issues board, a
+**Link Jira Issue** action in the composer, issue previews, state changes,
+session comments, and project mapping. OpenChamber draws that UI itself; the
+extension does not add a separate rail panel.
 
 The extension talks to Jira REST API v3 with the Atlassian account's email and
 an API token. OpenChamber keeps the token; the extension's service never sees
@@ -73,6 +74,25 @@ The token acts as your Jira user. For the features below, your account needs:
 
 Only issues you can see in Jira appear in OpenChamber.
 
+## Where Jira appears in OpenChamber
+
+OpenChamber 2.8.0 draws tracker UI itself. This extension does **not** add a
+separate Jira rail panel. The Jira card in Settings holds only the connection
+and its optional mapping; it is not the issue list. The list is on the **issues
+board**, and the picker is in the **composer**.
+
+| Where | How to get there | What it shows |
+| --- | --- | --- |
+| Issues board | `Ctrl+K` then `B` (`Cmd+K` then `B` on macOS), or the Command Palette → **Show or hide issues and PRs** | Choose **Jira** in the source menu at the top. The board opens on the repository tab when the project is a Git repository; the Jira tab is beside it. It remembers the tab you chose. |
+| Composer | Click the **+** (Add attachment) button at the bottom-left of the composer → **Link Jira Issue** | The Jira picker: search, people, state, priority, and project filters. The `@` menu is OpenChamber's file mention picker; it does not list Jira issues. |
+| Issue detail | Select an issue on the board, or open a `https://your-site.atlassian.net/browse/KEY-123` link | Description, comments, parent and children, and the available transitions, in the Tracker panel or tab. |
+| Settings | **Settings → Integrations → Extension accounts → Jira** | Connect or disconnect the site, choose project mapping, and turn session comments on or off. It is not the issue list. |
+
+The Jira tab and the composer action appear only while the account is
+connected. If the board is already open, choose **Jira** from its source menu.
+An issue linked from the composer stays on the session as a chip with its live
+state.
+
 ## Authentication and SSO
 
 This extension uses HTTP Basic auth: your Atlassian account email plus an API
@@ -109,6 +129,7 @@ manifest change for Jira.
 | 401 after connecting | Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect. |
 | 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
 | Empty picker | The default view is **open issues you can see**; check the state filter, project access, and that the Jira account is the one you expect. Choose **Assigned to me** to narrow it to your queue. |
+| Connected, but no issues show | Open the **issues board** (`Ctrl/Cmd+K` then `B`) and choose the **Jira** tab, or use **+ → Link Jira Issue** in the composer. Settings shows only the connection and mapping. Typing `@` opens file mentions, not Jira. |
 | 429 | Jira rate-limited the site. Wait for the `Retry-After` interval; the extension surfaces the error rather than retrying silently. |
 | “Only Jira Cloud is supported” | The URL points at Jira Server or Data Center. |
 | A transition fails | The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira. |
@@ -117,8 +138,9 @@ manifest change for Jira.
 ## What it supports
 
 - **Listing and search** through JQL (`/rest/api/3/search/jql`), most recently
-  updated first. The default is open issues you can see; choose **Assigned to
-  me** for your own queue. Search matches summaries and issue keys.
+  updated first, on the **Jira** tab of the issues board and in the composer
+  picker. The default is open issues you can see; choose **Assigned to me** for
+  your own queue. Search matches summaries and issue keys.
 - **State filters** `open`, `all`, `todo`, `in-progress`, `done`, mapped to
   Jira status categories. `canceled` is not offered because Jira has no native
   canceled category; canceled statuses report as `done`.

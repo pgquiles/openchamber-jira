@@ -151,6 +151,7 @@ h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.02em}
 
 /* ---------- flow ---------- */
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line-strong);border-radius:12px;background:var(--paper-soft);overflow:hidden}
+.flow.three{grid-template-columns:repeat(3,1fr)}
 .flow-step{padding:24px 22px 26px;border-left:1px solid var(--line);position:relative}
 .flow-step:first-child{border-left:0}
 .flow-step .n{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:var(--ink);color:var(--paper-soft);font-family:var(--mono);font-size:11px;margin-bottom:14px}

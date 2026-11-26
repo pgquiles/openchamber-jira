@@ -55,7 +55,7 @@
       <a href="#connect">Connect a Jira site</a>
       <a href="#permissions">Permissions and scopes</a>
       <a href="#sso">SSO and organization policy</a>
-      <a href="#using">Using the extension</a>
+      <a href="#using">Where Jira appears</a>
       <a href="#find-link" class="sub">Find and link an issue</a>
       <a href="#read">Read an issue</a>
       <a href="#states" class="sub">States and transitions</a>
@@ -110,7 +110,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <tbody>
             <tr><td><code>package.json</code></td><td>Manifest: panel, service, tracker contribution, engines</td></tr>
             <tr><td><code>service/main.js</code></td><td>The built runtime entry OpenChamber actually runs</td></tr>
-            <tr><td><code>icon.svg</code></td><td>The Jira mark in the rail and account card</td></tr>
+            <tr><td><code>icon.svg</code></td><td>The Jira mark in the extension list and Settings</td></tr>
             <tr><td><code>README.md</code></td><td>The short version of this documentation</td></tr>
           </tbody>
         </table>
@@ -191,13 +191,26 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
       </section>
 
       <section id="using">
-        <h2><span class="h-num">06</span>Using the extension</h2>
-        <p>Jira issues appear wherever OpenChamber expects a tracker: the <span class="kbd">@</span> reference picker, composer chips, linked items of a session, live states, and the account card.</p>
+        <h2><span class="h-num">06</span>Where Jira appears</h2>
+        <p>OpenChamber 2.8.0 draws the tracker UI itself. The extension does not add a separate Jira rail panel, and the Jira card in Settings holds only the connection and its optional mapping. The issue list is the <strong>Jira</strong> tab on the issues board; the picker is a composer action.</p>
+        <table>
+          <thead><tr><th>Surface</th><th>How to open it</th><th>What it is for</th></tr></thead>
+          <tbody>
+            <tr><td>Issues board</td><td><span class="kbd">Ctrl</span>+<span class="kbd">K</span>, then <span class="kbd">B</span> (<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span> on macOS), or the Command Palette → <strong>Show or hide issues and PRs</strong></td><td>Choose <strong>Jira</strong> in the source menu. The board opens on the repository tab when the project is a Git repository; the Jira tab is beside it. It remembers your choice.</td></tr>
+            <tr><td>Composer</td><td>The <strong>+</strong> (Add attachment) button at the bottom-left of the composer → <strong>Link Jira Issue</strong></td><td>The Jira picker. The <span class="kbd">@</span> menu is OpenChamber's file mention picker; it does not list Jira issues.</td></tr>
+            <tr><td>Issue detail</td><td>Select an issue on the board, or open a Jira issue URL</td><td>Description, comments, parent and children, and transitions, in the Tracker panel or tab.</td></tr>
+            <tr><td>Settings</td><td><strong>Settings → Integrations → Extension accounts → Jira</strong></td><td>Connect the site, map projects, and enable session comments. It is not the issue list.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout info">
+          <span class="callout-title">If you expected a rail panel</span>
+          <p>The tracker contract has no extension-owned panel: OpenChamber renders the board tab, the picker, the detail view, and the account card from the tracker descriptor. A rail panel would duplicate that UI, so use the board and the composer action above.</p>
+        </div>
       </section>
 
       <section id="find-link">
         <h2><span class="h-num">07</span>Find and link an issue</h2>
-        <p>Type <span class="kbd">@</span> in the composer and choose Jira, or open the reference picker. The default view is <strong>open issues you can see</strong>, most recently updated first. Choose <strong>Assigned to me</strong> to narrow it to your queue; search matches issue keys and summaries.</p>
+        <p>Open the composer's <strong>+</strong> menu and choose <strong>Link Jira Issue</strong>. The <span class="kbd">@</span> menu is for file mentions, not Jira. The same issue list is the <strong>Jira</strong> tab on the issues board. The default view is <strong>open issues you can see</strong>, most recently updated first. Choose <strong>Assigned to me</strong> to narrow it to your queue; search matches issue keys and summaries.</p>
         <table>
           <thead><tr><th>Filter</th><th>Behaviour</th></tr></thead>
           <tbody>
@@ -252,7 +265,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
 
       <section id="account">
         <h2><span class="h-num">11</span>The account card</h2>
-        <p><strong>Settings → Integrations → Extension accounts</strong> holds the connection. The connected card shows the Jira account and site, with <strong>Connect</strong> / <strong>Disconnect</strong>, and exposes the optional OpenChamber settings:</p>
+        <p><strong>Settings → Integrations → Extension accounts</strong> holds the connection. The connected card shows the Jira account and site, with <strong>Connect</strong> / <strong>Disconnect</strong>, and exposes the optional OpenChamber settings. It is not the issue list; that is the <strong>Jira</strong> tab on the issues board, or the composer picker.</p>
         <ul>
           <li><strong>Project mapping</strong> — choose a default Jira project and how OpenChamber containers map to Jira projects.</li>
           <li><strong>Session comments</strong> — allow posting a session summary as a Jira comment.</li>
@@ -267,6 +280,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
             <tr><td>401 after connecting</td><td>Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect.</td></tr>
             <tr><td>403 on connect</td><td>The account lacks <code>read:jira-user</code> (scoped token), or Jira denied the call. Check scopes and site permissions.</td></tr>
             <tr><td>Empty picker</td><td>The default view is <strong>open issues you can see</strong>. Check the state filter, project access, and that the Jira account is the one you expect. Choose <strong>Assigned to me</strong> to narrow it.</td></tr>
+            <tr><td>Connected, but no issues show</td><td>Open the issues board (<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span>) and choose the <strong>Jira</strong> tab, or use <strong>+ → Link Jira Issue</strong> in the composer. Settings shows only the connection and mapping. Typing <span class="kbd">@</span> opens file mentions, not Jira.</td></tr>
             <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Anyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
             <tr><td>429</td><td>Jira rate-limited the site. Wait for the <code>Retry-After</code> interval; the extension surfaces the error rather than retrying silently.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>

@@ -31,6 +31,7 @@
     </button>
     <nav class="nav" id="nav" aria-label="Main">
       <a href="#features">Features</a>
+      <a href="#find">Find it</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#security">SSO</a>
       <a href="#limits">Limits</a>
@@ -80,6 +81,29 @@
     </div>
   </div>
 
+  <section class="section" id="find">
+    <div class="shell">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">Where it lives</span>
+          <h2>Three doors,<br>no <em>hidden panel.</em></h2>
+        </div>
+        <div class="intro">
+          <p>OpenChamber draws the tracker UI itself. The extension has no separate rail panel: the issue list is the <strong>Jira</strong> tab on the issues board, the picker is a composer action, and Settings only holds the connection and mapping.</p>
+        </div>
+      </div>
+      <div class="flow three">
+        <div class="flow-step"><span class="n">1</span><h3>The issues board</h3><p>Press <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span>, or use the Command Palette → <strong>Show or hide issues and PRs</strong>. Choose <strong>Jira</strong> in the source menu. The board remembers your choice.</p><span class="tagline">issue list · Jira tab</span></div>
+        <div class="flow-step"><span class="n">2</span><h3>The composer</h3><p>Click <strong>+</strong> (Add attachment) at the bottom-left of the composer and choose <strong>Link Jira Issue</strong>. The <span class="kbd">@</span> menu is for file mentions; it does not list Jira.</p><span class="tagline">picker · search, filter, link</span></div>
+        <div class="flow-step"><span class="n">3</span><h3>The issue detail</h3><p>Select an issue on the board, or open a Jira issue URL. Description, comments, children, and transitions open in the Tracker panel beside the chat.</p><span class="tagline">read · move · comment</span></div>
+      </div>
+      <div class="note-box">
+        <span class="label">Not in Settings</span>
+        <p><strong>Settings → Integrations → Extension accounts → Jira</strong> is only the connection, project mapping, and the session-comment switch. If you connected the account and looked there for a list, that is why nothing appeared.</p>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="features">
     <div class="shell">
       <div class="section-head">
@@ -88,7 +112,7 @@
           <h2>Six ways it removes<br>the <em>tab switch.</em></h2>
         </div>
         <div class="intro">
-          <p>The extension plugs into OpenChamber's tracker contract. Jira issues turn up in the picker, the composer chips, linked sessions, live states, and the account card — with Jira remaining the source of truth.</p>
+          <p>The extension plugs into OpenChamber's tracker contract. Jira issues turn up on the board's <strong>Jira</strong> tab, in the composer picker, in linked sessions, in live states, and in the account card — with Jira remaining the source of truth.</p>
         </div>
       </div>
       <div class="features">
@@ -134,7 +158,7 @@
           <h2>Three surfaces,<br>one <em>thread.</em></h2>
         </div>
         <div class="intro">
-          <p>The picker, the issue panel, and the account card are the whole loop: find it, read it, move it, leave the context. The screenshots below are layouts rendered from demo data against OpenChamber 2.8.0.</p>
+          <p>The board's Jira tab, the composer picker, the issue panel, and the account card are the whole loop: find it, read it, move it, leave the context. The screenshots below are layouts rendered from demo data against OpenChamber 2.8.0.</p>
         </div>
       </div>
       <div class="shots">
@@ -178,7 +202,7 @@
       <div class="flow">
         <div class="flow-step"><span class="n">1</span><h3>Install</h3><p>Add the folder or ZIP in Settings → Extensions. Allow the local tracker service and the Jira connection.</p><span class="tagline">one extension</span></div>
         <div class="flow-step"><span class="n">2</span><h3>Connect</h3><p>Paste your site, Atlassian email, and an API token. The extension checks <code>serverInfo</code> and <code>myself</code> before it says connected.</p><span class="tagline">basic auth</span></div>
-        <div class="flow-step"><span class="n">3</span><h3>Link</h3><p>Type <span class="kbd">@</span> in the composer and pick a Jira issue. It stays with the session and shows its live state.</p><span class="tagline">composer picker</span></div>
+        <div class="flow-step"><span class="n">3</span><h3>Link</h3><p>Open the composer's <strong>+</strong> menu and choose <strong>Link Jira Issue</strong>. It stays with the session and shows its live state. The board's <strong>Jira</strong> tab lists the same issues.</p><span class="tagline">composer picker · board tab</span></div>
         <div class="flow-step"><span class="n">4</span><h3>Move</h3><p>Change state or write the session comment from OpenChamber. Jira stays the source of truth; the writes are explicit.</p><span class="tagline">writes are explicit</span></div>
       </div>
       <div class="note-box">
