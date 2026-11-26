@@ -85,13 +85,46 @@ board**, and the picker is in the **composer**.
 | --- | --- | --- |
 | Issues board | `Ctrl+K` then `B` (`Cmd+K` then `B` on macOS), or the Command Palette → **Show or hide issues and PRs** | Choose **Jira** in the source menu at the top. The board opens on the repository tab when the project is a Git repository; the Jira tab is beside it. It remembers the tab you chose. |
 | Composer | Click the **+** (Add attachment) button at the bottom-left of the composer → **Link Jira Issue** | The Jira picker: search, people, state, priority, and project filters. The `@` menu is OpenChamber's file mention picker; it does not list Jira issues. |
-| Issue detail | Select an issue on the board, or open a `https://your-site.atlassian.net/browse/KEY-123` link | Description, comments, parent and children, and the available transitions, in the Tracker panel or tab. |
+| Issue detail | Select an issue on the board, or open a `https://your-site.atlassian.net/browse/KEY-123` link | Description, comments, parent and children, and the available state changes, in the Tracker panel or tab. |
 | Settings | **Settings → Integrations → Extension accounts → Jira** | Connect or disconnect the site, choose project mapping, and turn session comments on or off. It is not the issue list. |
 
 The Jira tab and the composer action appear only while the account is
 connected. If the board is already open, choose **Jira** from its source menu.
 An issue linked from the composer stays on the session as a chip with its live
 state.
+
+**Changing state.** Open the issue from the **issues board**. The composer
+picker's preview is for choosing an issue and is read-only, so it has no state
+menu. In the board's detail (the side preview or the issue tab), the state pill
+in the header is a menu. Pick another workflow state and the extension resolves
+the issue's available transition. If Jira asks for fields the transition needs,
+the change fails with Jira's own error; that step has to be finished in Jira
+(issue #13).
+
+**Comments are read-only.** OpenChamber 2.8.0 shows an issue's comments but
+draws no composer for tracker items. The tracker contract's `comments.create`
+is wired only to the optional **Session comments** setting, which posts a
+session summary when a session starts, finishes, or fails. Adding a comment of
+your own from the detail view is a host-side gap, tracked upstream in
+[openchamber#7641](https://github.com/openchamber/openchamber/issues/7641);
+the extension already implements the write.
+
+**No rail panel.** The right rail is OpenChamber's strip of panel icons beside
+the chat (Git, Files, Terminal, and any extension with a panel page). This
+extension's `contributes.panel` has no `entry`, so it draws no rail icon and no
+Jira rail panel. The tracker contract provides the board tab, the composer
+picker, and the detail view; a rail panel would be an extra extension page (for
+example, "Assigned to me" with issue rows) calling the same tracker API. It is
+not needed to browse, read, or link issues, so it is not part of this
+extension.
+
+The board's project picker is also drawn by OpenChamber. On a site with
+hundreds of projects it currently has no scrollbar, so projects past the first
+screenful cannot be reached; that is an OpenChamber bug
+([openchamber#7642](https://github.com/openchamber/openchamber/issues/7642)),
+tracked here as
+[issue #15](https://github.com/pgquiles/openchamber-jira/issues/15). The
+composer picker is unaffected and already has a project filter and search.
 
 ## Authentication and SSO
 
@@ -130,6 +163,9 @@ manifest change for Jira.
 | 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
 | Empty picker | The default view is **open issues you can see**; check the state filter, project access, and that the Jira account is the one you expect. Choose **Assigned to me** to narrow it to your queue. |
 | Connected, but no issues show | Open the **issues board** (`Ctrl/Cmd+K` then `B`) and choose the **Jira** tab, or use **+ → Link Jira Issue** in the composer. Settings shows only the connection and mapping. Typing `@` opens file mentions, not Jira. |
+| Can't reach a project in the board's project picker | OpenChamber draws that menu and it has no scrollbar on 2.8.0 when a site has many projects. This is a host bug, not the extension; see [openchamber#7642](https://github.com/openchamber/openchamber/issues/7642). Use the composer's **+ → Link Jira Issue** picker, which has its own project filter and search. |
+| No comment box in the issue detail | Read-only by host design in 2.8.0: comments are shown, but no tracker comment composer is drawn. `comments.create` is used only by **Session comments**. Tracked upstream in [openchamber#7641](https://github.com/openchamber/openchamber/issues/7641). |
+| Can't change status in the composer picker's preview | Expected: that preview only selects and links. Open the issue from the **issues board**; its detail has the state menu. |
 | 429 | Jira rate-limited the site. Wait for the `Retry-After` interval; the extension surfaces the error rather than retrying silently. |
 | “Only Jira Cloud is supported” | The URL points at Jira Server or Data Center. |
 | A transition fails | The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira. |
@@ -151,7 +187,8 @@ manifest change for Jira.
 - **Labels** and **projects as containers**, keyed by project key so the
   container id works directly in JQL.
 - **Details**: Markdown description converted from Atlassian Document Format,
-  up to 100 comments, parent and children, and a done/total count.
+  up to 100 comments (shown read-only, see above), parent and children, and a
+  done/total count.
 - **Children**: native sub-tasks and parent, plus team-managed epic children and
   company-managed **Epic Link** children. The Epic Link field is discovered by
   its custom-field schema, so localized field names still work. A child list
@@ -166,6 +203,16 @@ manifest change for Jira.
 - Jira **Cloud** only.
 - Comments are read in one page of up to 100 per issue. If the newest comments
   still exceed OpenChamber's response size, the oldest ones are left out.
+- The issue detail shows comments read-only in OpenChamber 2.8.0; a user
+  comment composer for tracker items is a host gap
+  ([openchamber#7641](https://github.com/openchamber/openchamber/issues/7641)).
+  The extension implements `comments.create`; OpenChamber currently calls it
+  only for session comments.
+- The board's project picker is drawn by OpenChamber and has no scrollbar on
+  2.8.0 with long container lists. The extension returns the projects, but
+  cannot style that menu; the fix is upstream
+  ([openchamber#7642](https://github.com/openchamber/openchamber/issues/7642),
+  tracked as [#15](https://github.com/pgquiles/openchamber-jira/issues/15)).
 - The picker reads up to 100 issues per page; more pages are available through
   Jira's next page token.
 - Transition screens that demand extra fields (resolution, comment, custom

@@ -95,11 +95,12 @@
       <div class="flow three">
         <div class="flow-step"><span class="n">1</span><h3>The issues board</h3><p>Press <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span>, or use the Command Palette → <strong>Show or hide issues and PRs</strong>. Choose <strong>Jira</strong> in the source menu. The board remembers your choice.</p><span class="tagline">issue list · Jira tab</span></div>
         <div class="flow-step"><span class="n">2</span><h3>The composer</h3><p>Click <strong>+</strong> (Add attachment) at the bottom-left of the composer and choose <strong>Link Jira Issue</strong>. The <span class="kbd">@</span> menu is for file mentions; it does not list Jira.</p><span class="tagline">picker · search, filter, link</span></div>
-        <div class="flow-step"><span class="n">3</span><h3>The issue detail</h3><p>Select an issue on the board, or open a Jira issue URL. Description, comments, children, and transitions open in the Tracker panel beside the chat.</p><span class="tagline">read · move · comment</span></div>
+        <div class="flow-step"><span class="n">3</span><h3>The issue detail</h3><p>Select an issue on the board, or open a Jira issue URL. Description, comments (read-only), children, and the state menu open in the Tracker panel beside the chat.</p><span class="tagline">read · move · link</span></div>
       </div>
       <div class="note-box">
         <span class="label">Not in Settings</span>
         <p><strong>Settings → Integrations → Extension accounts → Jira</strong> is only the connection, project mapping, and the session-comment switch. If you connected the account and looked there for a list, that is why nothing appeared.</p>
+        <p>Two limits come from OpenChamber, not this extension: the issue detail has no comment composer for tracker items, and the board's project picker has no scrollbar with very long project lists. Both are tracked upstream.</p>
       </div>
     </div>
   </section>
