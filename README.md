@@ -245,21 +245,26 @@ Ordered by what unlocks the most:
    starts upstream.
 3. **Token health** — expiry, missing scopes, and a specific needs-attention
    state ([#3](https://github.com/pgquiles/openchamber-jira/issues/3)).
-4. **Richer Jira content**: show images and attachments as links, render panels
+4. **Jira rail panel** — assigned issues, filters, and one selected issue in
+   the right rail, with the board a click away
+   ([#16](https://github.com/pgquiles/openchamber-jira/issues/16)). Needs a
+   guest tracker read path upstream; the sketch is in
+   [`docs/mockups/rail-panel.png`](docs/mockups/rail-panel.png).
+5. **Richer Jira content**: show images and attachments as links, render panels
    and expandos, keep mentions readable, and surface sprint/story points where
    the contract allows
    ([#5](https://github.com/pgquiles/openchamber-jira/issues/5),
    [#6](https://github.com/pgquiles/openchamber-jira/issues/6)).
-5. **Rate-limit handling**: honor `Retry-After`, coalesce duplicate reads, and
+6. **Rate-limit handling**: honor `Retry-After`, coalesce duplicate reads, and
    back off on 429 without hiding the failure from the user
    ([#4](https://github.com/pgquiles/openchamber-jira/issues/4)).
-6. **CI and releases**: GitHub Actions for typecheck, tests, guest check, ZIP
+7. **CI and releases**: GitHub Actions for typecheck, tests, guest check, ZIP
    artifact, and tagged releases
    ([#10](https://github.com/pgquiles/openchamber-jira/issues/10)).
-7. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
+8. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
    contractors and shared workstations
    ([#9](https://github.com/pgquiles/openchamber-jira/issues/9)).
-8. **Live verification and real screenshots** against a disposable Jira Cloud
+9. **Live verification and real screenshots** against a disposable Jira Cloud
    site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)).
 
 The website lives in `site/` and deploys to GitHub Pages from `main` through
