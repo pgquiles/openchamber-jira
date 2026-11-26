@@ -161,6 +161,17 @@ export const ADF_NODE_CASES: AdfNodeCase[] = [
     markdown: '| Name | Value |\n| --- | --- |\n| one | two |',
   },
   {
+    name: 'a table cell with a pipe and a backslash',
+    node: {
+      type: 'table',
+      content: [
+        { type: 'tableRow', content: [{ type: 'tableHeader', content: [paragraph(text('Value'))] }] },
+        { type: 'tableRow', content: [{ type: 'tableCell', content: [paragraph(text('a|b\\c'))] }] },
+      ],
+    },
+    markdown: '| Value |\n| --- |\n| a\\|b\\\\c |',
+  },
+  {
     name: 'a code block',
     node: { type: 'codeBlock', attrs: { language: 'ts' }, content: [text('const x = 1;')] },
     markdown: '```ts\nconst x = 1;\n```',

@@ -397,7 +397,7 @@ var renderBlocks = (nodes, context) => {
   }
   return blocks;
 };
-var renderCell = (cell, context) => renderBlocks(asNodes(cell.content), contextAt(context, 0)).join(" ").replace(/\n+/g, " ").replace(/\|/g, "\\|").trim();
+var renderCell = (cell, context) => renderBlocks(asNodes(cell.content), contextAt(context, 0)).join(" ").replace(/\n+/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").trim();
 var renderBlock = (node, context) => {
   switch (node.type) {
     case "paragraph":
