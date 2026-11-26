@@ -127,6 +127,59 @@ export const epicLinkFieldId = (fields: unknown): string | null => {
   return byName ? byName.id as string : null;
 };
 
+const CUSTOM_FIELD = /^customfield_\d+$/;
+
+/** Jira's custom fields are the ones an error value does not name; system
+ * fields such as `resolution` already read well. */
+export const isCustomFieldId = (value: string): boolean => CUSTOM_FIELD.test(value);
+
+/** The display name of every field a site reports, by id. Blank names and
+ * names that only repeat the id are left out. */
+export const jiraFieldNames = (fields: unknown): Map<string, string> => {
+  const names = new Map<string, string>();
+  if (!Array.isArray(fields)) return names;
+  for (const field of fields as JiraField[]) {
+    if (typeof field?.id !== 'string') continue;
+    const name = typeof field.name === 'string' ? field.name.trim() : '';
+    if (name === '' || name === field.id) continue;
+    names.set(field.id, name);
+  }
+  return names;
+};
+
+/**
+ * Rewrite the custom-field ids in a Jira error into the names the user sees,
+ * keeping the id in parentheses so it stays searchable. System fields already
+ * read well and are left alone.
+ */
+export const explainFieldErrors = (
+  message: string,
+  ids: readonly string[],
+  names: ReadonlyMap<string, string>,
+): string => {
+  let explained = message;
+  for (const id of ids) {
+    if (!isCustomFieldId(id)) continue;
+    const name = names.get(id);
+    if (!name || name === id) continue;
+    // split/join keeps a `$` in the name literal, unlike String.replace.
+    explained = explained.split(`${id}: `).join(`${name} (${id}): `);
+  }
+  return explained;
+};
+
+/** The machine code OpenChamber's bridge needs to keep Jira's status. Codes
+ * must match the SDK's [A-Z_]{1,64} rule, so none may carry a digit. */
+export const failureCode = (status: number): string => {
+  if (status === 401) return 'JIRA_UNAUTHORIZED';
+  if (status === 403) return 'JIRA_FORBIDDEN';
+  if (status === 404) return 'JIRA_NOT_FOUND';
+  if (status === 409) return 'JIRA_CONFLICT';
+  if (status === 429) return 'JIRA_RATE_LIMITED';
+  if (status >= 500) return 'JIRA_UPSTREAM';
+  return 'JIRA_REJECTED';
+};
+
 /**
  * An epic's children: native `parent` covers team-managed projects and the
  * Epic Link custom field covers company-managed ones. Both are asked in one

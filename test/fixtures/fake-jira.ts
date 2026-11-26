@@ -62,6 +62,8 @@ export type FakeJira = {
   failNext: (status: number, message: string, headers?: Record<string, string>) => void;
   /** Refuse the next transition like a workflow screen that needs fields. */
   failNextTransition: (errors: Record<string, string>) => void;
+  /** Refuse the next field-catalog read. */
+  failNextField: (status: number, message: string) => void;
   setPageSize: (size: number) => void;
   close: () => Promise<void>;
 };
@@ -352,6 +354,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
   const requests: FakeJiraRequest[] = [];
   const failures: Array<{ status: number; message: string; headers: Record<string, string> }> = [];
   let transitionFailure: Record<string, string> | null = null;
+  let fieldFailure: { status: number; message: string } | null = null;
   let pageSize = 100;
   let nextComment = 0;
 
@@ -510,6 +513,12 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       }
 
       if (url.pathname === '/rest/api/3/field' && req.method === 'GET') {
+        if (fieldFailure) {
+          const failure = fieldFailure;
+          fieldFailure = null;
+          send(failure.status, jiraError(failure.status, failure.message).body);
+          return;
+        }
         send(200, [
           { id: 'summary', name: 'Summary' },
           { id: 'parent', name: 'Parent' },
@@ -517,6 +526,11 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
             id: 'customfield_10014',
             name: 'Epic Link',
             schema: { type: 'any', custom: 'com.pyxis.greenhopper.jira:gh-epic-link' },
+          },
+          {
+            id: 'customfield_10046',
+            name: 'Gate check',
+            schema: { type: 'string', custom: 'com.atlassian.jira.plugin.system.customfieldtypes:textfield' },
           },
         ] as unknown as Json);
         return;
@@ -674,6 +688,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       issues,
       failNext: (status, message, headers = {}) => { failures.push({ status, message, headers }); },
       failNextTransition: (errors) => { transitionFailure = errors; },
+      failNextField: (status, message) => { fieldFailure = { status, message }; },
       setPageSize: (size) => { pageSize = Math.max(1, size); },
       close: () => new Promise((done) => { server.close(() => done()); }),
     });

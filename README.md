@@ -115,8 +115,9 @@ picker's preview is for choosing an issue and is read-only, so it has no state
 menu. In the board's detail (the side preview or the issue tab), the state pill
 in the header is a menu. Pick another workflow state and the extension resolves
 the issue's available transition. If Jira asks for fields the transition needs,
-the change fails with Jira's own error, which names the missing fields; finish
-that step in Jira from the issue's header link.
+the change fails with Jira's own 400 error, which names the missing fields
+(a custom field by display name and id, so it stays searchable); finish that
+step in Jira from the issue's header link.
 
 **Comments are read-only.** OpenChamber 2.8.0 shows an issue's comments but
 draws no composer for tracker items. The tracker contract's `comments.create`
@@ -138,7 +139,7 @@ host-side, and the site credential and session handle never reach the
 extension. It needs an upstream guest tracker read path, or a host-drawn panel.
 The design and a sketch are tracked in
 [issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
-part of 0.3.0.
+part of 0.3.1.
 
 The board's project picker is also drawn by OpenChamber. In 2.8.0 it has no
 scrollbar on a site with hundreds of projects, so projects past the first
@@ -243,8 +244,9 @@ manifest change for Jira.
   Jira's next page token.
 - Transition screens that demand extra fields (resolution, comment, custom
   fields) cannot be completed through the tracker contract. Jira's own error is
-  shown instead of guessing values; it names the fields, and the issue header
-  opens the item in Jira to finish the step.
+  shown instead of guessing values; it names the fields (a custom field by
+  display name and id), and the issue header opens the item in Jira to finish
+  the step.
 - Reads that Jira rate-limits (429, or 503 with `Retry-After`) are retried, up
   to three attempts and 10 seconds total. Writes are never retried, so a
   comment or transition cannot be duplicated; when the retries run out, the
@@ -296,8 +298,10 @@ Ordered by what unlocks the most:
    [openchamber#7653](https://github.com/openchamber/openchamber/issues/7653)).
 
 The 15-point [live verification checklist](docs/live-verification.md) was run
-against a disposable Jira Cloud site with the 0.3.0 release and OpenChamber
-2.8.0. Its results are recorded on
+against a disposable Jira Cloud site with OpenChamber 2.8.0. The 0.3.0 run
+recorded the full checklist, and 0.3.1 re-ran check 11 after
+[#26](https://github.com/pgquiles/openchamber-jira/issues/26): Jira's 400 now
+reaches the client with the required field's name and id. Results are on
 [#12](https://github.com/pgquiles/openchamber-jira/issues/12), and the
 checklist stays in the repository for the next release.
 

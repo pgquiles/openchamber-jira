@@ -41,7 +41,7 @@
 <main id="main">
   <div class="docs-hero">
     <div class="shell">
-      <span class="eyebrow">Documentation · v0.3.0</span>
+      <span class="eyebrow">Documentation · v0.3.1</span>
       <h1>Everything it does, and<br>everything it <em style="font-style:italic;color:var(--olive)">doesn't.</em></h1>
       <p>The Jira Cloud tracker extension for OpenChamber: install, connect, permissions, SSO policy, daily use, troubleshooting, and the limits that are deliberately left open.</p>
     </div>
@@ -203,10 +203,10 @@
         <div class="callout info">
           <span class="callout-title">What “rail panel” means (and why there is not one)</span>
           <p>OpenChamber's right rail is the strip of panel icons beside the chat: Git, Files, Terminal, and any extension that ships a panel page. An extension gets one by pointing <code>contributes.panel.entry</code> at an HTML page. This extension's panel has no <code>entry</code>, so no Jira icon or Jira panel appears there. The tracker contract itself only draws the board tab, the composer picker, and the detail view.</p>
-          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.3.0: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
+          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.3.1: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
         </div>
         <h3>Status and comments</h3>
-        <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's error, which names the missing fields (see <a href="#states">States and transitions</a>).</p>
+        <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's own 400 error, which names the missing fields (a custom field by display name and id; see <a href="#states">States and transitions</a>).</p>
         <p>Comments are shown but not writable in OpenChamber 2.8.0. The tracker contract's <code>comments.create</code> is used only by the optional session comments, which post a summary when a session starts, finishes, or fails. A user comment box for tracker items is a host gap, tracked in <a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a>.</p>
         <h3>Long project lists</h3>
         <p>The board's project picker is also drawn by OpenChamber. In 2.8.0 it has no scrollbar on a site with hundreds of Jira projects, so projects after the first screenful cannot be reached. That is a host bug, already fixed on <code>main</code> by <a href="https://github.com/openchamber/openchamber/pull/7430" target="_blank" rel="noopener">#7430</a>; 2.8.0 is the only affected release, tracked here as <a href="https://github.com/pgquiles/openchamber-jira/issues/15" target="_blank" rel="noopener">issue #15</a>. Until the next release, use the composer's picker, which has its own project filter and search.</p>
@@ -257,7 +257,7 @@
         <p>To change state, the extension reads the issue's available transitions and picks the one whose destination is the status you chose. It does not invent a transition or fall back to a different status.</p>
         <div class="callout warn">
           <span class="callout-title">Workflow screens</span>
-          <p>Some transitions require a screen with fields — resolution, a comment, a custom field. The tracker contract sends only the destination, so the extension cannot complete that step. Jira's error is shown instead of guessing values, and it names the missing fields. The issue header links to Jira, where the transition can be finished. Rendering the screen needs the contract to accept transition fields.</p>
+          <p>Some transitions require a screen with fields — resolution, a comment, a custom field. The tracker contract sends only the destination, so the extension cannot complete that step. Jira's own 400 is shown instead of guessing values; it names the missing fields, using a custom field's display name and keeping its id. The issue header links to Jira, where the transition can be finished. Rendering the screen needs the contract to accept transition fields.</p>
         </div>
       </section>
 
@@ -294,7 +294,7 @@
             <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Anyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
             <tr><td>429</td><td>Jira rate-limited the site. Reads wait for <code>Retry-After</code> (3 attempts, 10 s total); writes are not retried, and the error names the reset time when the wait is too long.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
-            <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Jira's error names them; open the issue from the header link and complete that step in Jira (see <a href="#states">States</a>).</td></tr>
+            <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Jira's 400 names them (custom fields by display name and id); open the issue from the header link and complete that step in Jira (see <a href="#states">States</a>).</td></tr>
             <tr><td>Comments look short</td><td>Only the newest comments fit the response budget; the oldest were left out. Read the full thread in Jira.</td></tr>
             <tr><td>The extension does not appear in Settings</td><td>Check that the manifest was added (folder or ZIP) and that the local service was allowed. OpenChamber must be 2.8.0 or newer.</td></tr>
           </tbody>
@@ -325,7 +325,7 @@
           <tbody>
             <tr><td>Deployment</td><td>Jira Cloud only; Server and Data Center are refused.</td><td>—</td></tr>
             <tr><td>Authoring</td><td>No create, edit, or delete; no assignee or priority changes. The tracker contract has no create or update method yet.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>, <a href="https://github.com/openchamber/openchamber/issues/7647" target="_blank" rel="noopener">openchamber#7647</a></td></tr>
-            <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed here; Jira's error names them and the issue header opens Jira.</td><td>—</td></tr>
+            <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed here; Jira's 400 names them (custom fields by display name and id) and the issue header opens Jira.</td><td>—</td></tr>
             <tr><td>Rate limits</td><td>Reads retry 429 and 503 with <code>Retry-After</code> (3 attempts, 10 s total). Writes are not retried, so nothing is duplicated; a wait past the budget fails with the reset time.</td><td>—</td></tr>
             <tr><td>Rich content</td><td>Media and attachments become links; panels and expandos keep their tone or title; status lozenges render bold. Media that is not an attachment opens only in Jira.</td><td>—</td></tr>
             <tr><td>Custom fields</td><td>Sprint, story points, and due date are not in the preview.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/6" target="_blank" rel="noopener">#6</a></td></tr>

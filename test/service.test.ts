@@ -263,7 +263,7 @@ describe('account', () => {
 
   test('reports a wrong token as an authentication failure', async () => {
     const refused = await call('auth.verify', { token: 'wrong-token' });
-    expect(refused).toMatchObject({ ok: false, error: { status: 401 } });
+    expect(refused).toMatchObject({ ok: false, error: { status: 401, code: 'JIRA_UNAUTHORIZED' } });
   });
 
   test('refuses to verify a Jira Server deployment', async () => {
@@ -576,8 +576,45 @@ describe('items.updateState', () => {
     const refused = await call('items.updateState', {
       token: 'jira-token', account: ACCOUNT, input: { id: 'PROJ-1', stateId: '3' },
     });
-    expect(refused).toMatchObject({ ok: false, error: { status: 400 } });
+    expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
     expect(refused.ok === false && refused.error.message).toContain('resolution: Resolution is required.');
+  });
+
+  test('names a required custom field and keeps its id searchable', async () => {
+    jira.failNextTransition({ customfield_10046: 'Gate check is required.' });
+    const refused = await call('items.updateState', {
+      token: 'jira-token', account: ACCOUNT, input: { id: 'PROJ-1', stateId: '3' },
+    });
+    expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+    expect(refused.ok === false && refused.error.message)
+      .toBe('Jira answered 400: Gate check (customfield_10046): Gate check is required.');
+  });
+
+  test('keeps the id and the status when the field catalog cannot be read', async () => {
+    const away = await startFakeJira();
+    try {
+      away.failNextField(403, 'The field catalog is forbidden.');
+      away.failNextTransition({ customfield_10046: 'Gate check is required.' });
+      const refused = await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: away.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+      expect(refused.ok === false && refused.error.message)
+        .toBe('Jira answered 400: customfield_10046: Gate check is required.');
+      expect(away.requests.filter((request) => request.path === '/rest/api/3/field')).toHaveLength(1);
+    } finally {
+      await away.close();
+    }
+  });
+
+  test('leaves an unknown custom field id alone', async () => {
+    jira.failNextTransition({ customfield_99999: 'Mystery is required.' });
+    const refused = await call('items.updateState', {
+      token: 'jira-token', account: ACCOUNT, input: { id: 'PROJ-1', stateId: '3' },
+    });
+    expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+    expect(refused.ok === false && refused.error.message)
+      .toBe('Jira answered 400: customfield_99999: Mystery is required.');
   });
 
   test('refuses a status the issue cannot reach', async () => {
@@ -585,7 +622,7 @@ describe('items.updateState', () => {
     const refused = await call('items.updateState', {
       token: 'jira-token', account: ACCOUNT, input: { id: 'PROJ-1', stateId: '6' },
     });
-    expect(refused).toMatchObject({ ok: false, error: { status: 409 } });
+    expect(refused).toMatchObject({ ok: false, error: { status: 409, code: 'NO_TRANSITION' } });
     expect(refused.ok === false && refused.error.message).toContain('transition');
   });
 
@@ -621,7 +658,7 @@ describe('failures', () => {
       jira.failNext(429, 'Rate limit exceeded for this site.', { 'retry-after': '0' });
     }
     const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
-    expect(refused).toMatchObject({ ok: false, error: { status: 429 } });
+    expect(refused).toMatchObject({ ok: false, error: { status: 429, code: 'JIRA_RATE_LIMITED' } });
     expect(refused.ok === false && refused.error.message).toContain('Rate limit exceeded');
     expect(searches()).toBe(before + 3);
   });

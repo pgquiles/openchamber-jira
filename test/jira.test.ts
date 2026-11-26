@@ -5,9 +5,13 @@ import {
   epicChildrenJql,
   epicLinkFieldId,
   escapeJqlString,
+  explainFieldErrors,
+  failureCode,
+  isCustomFieldId,
   isEpicIssueType,
   isIssueKey,
   isProjectKey,
+  jiraFieldNames,
   mapPriorityName,
   mapStatusCategory,
   priorityFilterNames,
@@ -200,5 +204,75 @@ describe('project keys', () => {
 
   test.each(['', '1PROJ', 'PROJ X', 'PROJ"', 'PROJ/OTHER', 'PROJ-1'])('%s is not a project key', (value) => {
     expect(isProjectKey(value)).toBe(false);
+  });
+});
+
+describe('field names in Jira errors', () => {
+  const names = jiraFieldNames([
+    { id: 'summary', name: 'Summary' },
+    { id: 'resolution', name: 'Resolution' },
+    { id: 'customfield_10046', name: 'Gate check' },
+    { id: 'customfield_10047', name: '   ' },
+    { id: 'customfield_10048', name: 'customfield_10048' },
+    { id: 'customfield_10049', name: 'Cost $&' },
+    { id: 7, name: 'Number id' },
+    { id: 'customfield_10050' },
+  ]);
+
+  test('keeps a display name for every field that has a useful one', () => {
+    expect([...names]).toEqual([
+      ['summary', 'Summary'],
+      ['resolution', 'Resolution'],
+      ['customfield_10046', 'Gate check'],
+      ['customfield_10049', 'Cost $&'],
+    ]);
+  });
+
+  test('names a required custom field and keeps its id searchable', () => {
+    expect(explainFieldErrors(
+      'Jira answered 400: customfield_10046: Gate check is required.',
+      ['customfield_10046'],
+      names,
+    )).toBe('Jira answered 400: Gate check (customfield_10046): Gate check is required.');
+  });
+
+  test('leaves a system field and an unknown id untouched', () => {
+    const message = 'Jira answered 400: resolution: Resolution is required. customfield_99999: Nope.';
+    expect(explainFieldErrors(message, ['resolution'], names)).toBe(message);
+    expect(explainFieldErrors(message, ['customfield_99999'], names)).toBe(message);
+  });
+
+  test('explains every resolved field in one message', () => {
+    expect(explainFieldErrors(
+      'customfield_10046: one. customfield_10049: two.',
+      ['customfield_10046', 'customfield_10049'],
+      names,
+    )).toBe('Gate check (customfield_10046): one. Cost $& (customfield_10049): two.');
+  });
+
+  test('ignores a name that is only the id', () => {
+    expect(explainFieldErrors('customfield_10048: nope.', ['customfield_10048'], names))
+      .toBe('customfield_10048: nope.');
+  });
+
+  test('marks only custom-field ids for a name', () => {
+    expect(['customfield_10046', 'customfield_1', 'customfield_', 'customfield_x', 'resolution']
+      .map(isCustomFieldId)).toEqual([true, true, false, false, false]);
+  });
+});
+
+describe('failure codes', () => {
+  test.each([
+    [400, 'JIRA_REJECTED'],
+    [401, 'JIRA_UNAUTHORIZED'],
+    [403, 'JIRA_FORBIDDEN'],
+    [404, 'JIRA_NOT_FOUND'],
+    [409, 'JIRA_CONFLICT'],
+    [422, 'JIRA_REJECTED'],
+    [429, 'JIRA_RATE_LIMITED'],
+    [500, 'JIRA_UPSTREAM'],
+    [503, 'JIRA_UPSTREAM'],
+  ])('%i answers %s', (status, code) => {
+    expect(failureCode(status)).toBe(code as never);
   });
 });

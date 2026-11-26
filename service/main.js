@@ -813,6 +813,49 @@ var epicLinkFieldId = (fields) => {
   const byName = typed.find((field) => typeof field?.id === "string" && typeof field?.name === "string" && field.name.trim().toLowerCase() === "epic link" && /^customfield_\d+$/.test(field.id));
   return byName ? byName.id : null;
 };
+var CUSTOM_FIELD = /^customfield_\d+$/;
+var isCustomFieldId = (value) => CUSTOM_FIELD.test(value);
+var jiraFieldNames = (fields) => {
+  const names = new Map;
+  if (!Array.isArray(fields))
+    return names;
+  for (const field of fields) {
+    if (typeof field?.id !== "string")
+      continue;
+    const name = typeof field.name === "string" ? field.name.trim() : "";
+    if (name === "" || name === field.id)
+      continue;
+    names.set(field.id, name);
+  }
+  return names;
+};
+var explainFieldErrors = (message, ids, names) => {
+  let explained = message;
+  for (const id of ids) {
+    if (!isCustomFieldId(id))
+      continue;
+    const name = names.get(id);
+    if (!name || name === id)
+      continue;
+    explained = explained.split(`${id}: `).join(`${name} (${id}): `);
+  }
+  return explained;
+};
+var failureCode = (status) => {
+  if (status === 401)
+    return "JIRA_UNAUTHORIZED";
+  if (status === 403)
+    return "JIRA_FORBIDDEN";
+  if (status === 404)
+    return "JIRA_NOT_FOUND";
+  if (status === 409)
+    return "JIRA_CONFLICT";
+  if (status === 429)
+    return "JIRA_RATE_LIMITED";
+  if (status >= 500)
+    return "JIRA_UPSTREAM";
+  return "JIRA_REJECTED";
+};
 var epicChildrenJql = (key, fieldId) => {
   const escaped = escapeJqlString(key);
   const conditions = [`parent = "${escaped}"`];
@@ -897,13 +940,18 @@ var outbound = createTrackerOutbound({ env: process.env });
 
 class CallError extends Error {
   status;
-  constructor(message, status) {
+  code;
+  fields;
+  constructor(message, status, details = {}) {
     super(message);
     this.status = status;
+    this.code = details.code;
+    this.fields = details.fields ?? [];
   }
 }
 var truncate = (value, max) => value.length <= max ? value : value.slice(0, max);
-var jiraMessage = (response) => {
+var jiraFailure = (response) => {
+  const fields = [];
   try {
     const parsed = JSON.parse(response.body);
     const messages = [];
@@ -912,23 +960,30 @@ var jiraMessage = (response) => {
     }
     if (parsed.errors && typeof parsed.errors === "object" && !Array.isArray(parsed.errors)) {
       for (const [field, value] of Object.entries(parsed.errors)) {
-        if (typeof value === "string")
-          messages.push(`${field}: ${value}`);
+        if (typeof value !== "string")
+          continue;
+        messages.push(`${field}: ${value}`);
+        if (isCustomFieldId(field))
+          fields.push(field);
       }
     }
     if (messages.length > 0)
-      return messages.join(" ");
+      return { detail: messages.join(" "), fields };
   } catch {}
-  return response.body.trim().slice(0, 300);
+  return { detail: response.body.trim().slice(0, 300), fields };
 };
 var serverFailure = (response) => {
-  if (response.status === 401)
-    return new CallError("Jira refused the credential (401).", 401);
-  const detail = jiraMessage(response);
+  if (response.status === 401) {
+    return new CallError("Jira refused the credential (401).", 401, { code: failureCode(401) });
+  }
+  const { detail, fields } = jiraFailure(response);
   const verb = response.status === 429 ? "Jira rate-limited the request" : "Jira answered";
   const wait = retryAfterMs(response.headers);
   const hint = wait === null ? "" : ` Try again in ${Math.ceil(wait / 1000)} s.`;
-  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : "."}${hint}`, response.status);
+  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : "."}${hint}`, response.status, {
+    code: failureCode(response.status),
+    fields
+  });
 };
 var headerValue = (headers, name) => {
   if (!headers)
@@ -981,7 +1036,7 @@ var api = async (call, method, path, options = {}) => {
     try {
       return JSON.parse(response.body);
     } catch {
-      throw new CallError("Jira answered with something other than JSON.", 502);
+      throw new CallError("Jira answered with something other than JSON.", 502, { code: "JIRA_MALFORMED" });
     }
   }
 };
@@ -1242,12 +1297,12 @@ var handlers = {
   "auth.verify": async (call) => {
     const info = await api(call, "GET", "/rest/api/3/serverInfo");
     if (info && typeof info.deploymentType === "string" && info.deploymentType !== "Cloud") {
-      throw new CallError(`Only Jira Cloud is supported; ${call.instance} reports ${info.deploymentType}.`, 400);
+      throw new CallError(`Only Jira Cloud is supported; ${call.instance} reports ${info.deploymentType}.`, 400, { code: "UNSUPPORTED_SITE" });
     }
     const me = await api(call, "GET", "/rest/api/3/myself");
     const id = textOf(me.accountId);
     if (!id)
-      throw new CallError("Jira answered no account id for this credential.", 502);
+      throw new CallError("Jira answered no account id for this credential.", 502, { code: "JIRA_MALFORMED" });
     const login = textOf(me.emailAddress) ?? textOf(me.displayName);
     const account = { id, login };
     const name = textOf(me.displayName);
@@ -1270,7 +1325,7 @@ var handlers = {
       try {
         return buildJql(filters, names);
       } catch (error) {
-        throw new CallError(error instanceof Error ? error.message : "Jira filter is not valid.", 400);
+        throw new CallError(error instanceof Error ? error.message : "Jira filter is not valid.", 400, { code: "INVALID" });
       }
     };
     jqlFor([]);
@@ -1302,7 +1357,7 @@ var handlers = {
     const transition = transitions.find((entry) => String(entry.to?.id ?? "") === input.stateId);
     const transitionId = transition ? textOf(transition.id) : null;
     if (!transitionId) {
-      throw new CallError(`Jira has no transition from this issue's current status to ${input.stateId}.`, 409);
+      throw new CallError(`Jira has no transition from this issue's current status to ${input.stateId}.`, 409, { code: "NO_TRANSITION" });
     }
     await api(call, "POST", `/rest/api/3/issue/${seg(input.id)}/transitions`, {
       body: { transition: { id: transitionId } }
@@ -1336,7 +1391,7 @@ var handlers = {
   },
   "states.list": async (call, input) => {
     if (!isProjectKey(input.containerId)) {
-      throw new CallError(`"${input.containerId}" is not a Jira project key.`, 400);
+      throw new CallError(`"${input.containerId}" is not a Jira project key.`, 400, { code: "INVALID" });
     }
     const answer = await api(call, "GET", `/rest/api/3/project/${seg(input.containerId)}/statuses`);
     const seen = new Set;
@@ -1395,16 +1450,34 @@ var handlers = {
     try {
       body = markdownToAdf(input.body);
     } catch {
-      throw new CallError("The comment body is empty.", 400);
+      throw new CallError("The comment body is empty.", 400, { code: "INVALID" });
     }
     const comment = await orNull(api(call, "POST", `/rest/api/3/issue/${seg(input.identifier)}/comment`, { body: { body } }));
     if (!comment)
       return { comment: null };
     const id = comment.id === undefined ? null : String(comment.id);
     if (!id)
-      throw new CallError("Jira created the comment but answered no id.", 502);
+      throw new CallError("Jira created the comment but answered no id.", 502, { code: "JIRA_MALFORMED" });
     return { comment: { id: truncate(id, 1024) } };
   }
+};
+var FIELD_NAME_TTL_MS = 5 * 60 * 1000;
+var fieldNameCache = new Map;
+var fieldNamesFor = async (call) => {
+  const cached = fieldNameCache.get(call.instance);
+  if (cached && cached.expiresAt > Date.now())
+    return cached.names;
+  let names = null;
+  try {
+    names = jiraFieldNames(await api(call, "GET", "/rest/api/3/field"));
+  } catch {
+    names = null;
+  }
+  fieldNameCache.set(call.instance, {
+    names,
+    expiresAt: Date.now() + (names === null ? 60000 : FIELD_NAME_TTL_MS)
+  });
+  return names;
 };
 var failureOf = (error) => {
   const failure = {
@@ -1416,7 +1489,10 @@ var failureOf = (error) => {
     if (/^[A-Z_]{1,64}$/.test(error.code))
       failure.code = error.code;
   } else if (error instanceof CallError) {
-    failure.status = error.status;
+    if (error.status >= 400 && error.status <= 599)
+      failure.status = error.status;
+    if (error.code && /^[A-Z_]{1,64}$/.test(error.code))
+      failure.code = error.code;
   }
   return failure;
 };
@@ -1425,7 +1501,16 @@ var answer = async (method, call, input) => {
     const data = await handlers[method](call, input);
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error: failureOf(error instanceof Error ? error : new Error(String(error))) };
+    let failure = error instanceof Error ? error : new Error(String(error));
+    if (failure instanceof CallError && failure.fields.length > 0) {
+      const names = await fieldNamesFor(call);
+      if (names) {
+        failure = new CallError(explainFieldErrors(failure.message, failure.fields, names), failure.status, {
+          code: failure.code
+        });
+      }
+    }
+    return { ok: false, error: failureOf(failure) };
   }
 };
 var send = (res, status, body) => {
