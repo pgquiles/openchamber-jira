@@ -260,17 +260,17 @@ Ordered by what unlocks the most:
 6. **Rate-limit handling**: honor `Retry-After` and back off on 429 without
    hiding the failure from the user (duplicate reads are already coalesced)
    ([#4](https://github.com/pgquiles/openchamber-jira/issues/4)).
-7. **CI and release automation**: GitHub Actions for typecheck, tests, guest
-   check, ZIP artifact, pull-request checks, and tagged releases
-   ([#10](https://github.com/pgquiles/openchamber-jira/issues/10)).
-8. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
+7. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
    contractors and shared workstations
    ([#9](https://github.com/pgquiles/openchamber-jira/issues/9)).
-9. **Live verification and real screenshots** against a disposable Jira Cloud
+8. **Live verification and real screenshots** against a disposable Jira Cloud
    site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)).
 
 The website lives in `site/` and deploys to GitHub Pages from `main` through
-`.github/workflows/pages.yml`.
+`.github/workflows/pages.yml`. The extension has its own CI: every pull request
+and push to `main` runs the verification suite, fails on a stale
+`service/main.js`, and uploads the ZIP; a `v*` tag publishes a GitHub Release
+with that ZIP attached.
 
 ## Development
 
@@ -301,6 +301,10 @@ The contract tests spawn the built `service/main.js`, send `POST /tracker`
 requests with the service bearer, and play OpenChamber's outbound proxy in
 front of a fake Jira. Read requests go through GET-only handles; writes use
 POST. That is how the tests catch a method the real host would refuse.
+
+CI runs the same steps on every pull request and push to `main`, after building
+once and failing if the checked-in bundle changed. The `verify` check is the one
+`main` requires.
 
 Rebuild after changing `service/*.ts`; OpenChamber runs the bundled
 `service/main.js`, not the TypeScript sources.

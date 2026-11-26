@@ -362,6 +362,7 @@ npm run zip         # openchamber-jira.zip</code></pre>
         </table>
         <p>The contract tests spawn the built <code>service/main.js</code>, send <code>POST /tracker</code> requests with the service bearer, and play OpenChamber's outbound proxy in front of a fake Jira. Read requests go through GET-only handles; writes use POST. That is how the tests catch a method the real host would refuse.</p>
         <p>Rebuild after changing <code>service/*.ts</code>. The repository's <code>npm test</code> rebuilds first through the <code>pretest</code> script, so a stale bundle cannot make the tests pass.</p>
+        <p>CI runs typecheck, tests, guest check, the bundle check, and the ZIP build on every pull request and push to <code>main</code>. It fails when the checked-in <code>service/main.js</code> is stale. A <code>v*</code> tag runs the release workflow and publishes a GitHub Release with <code>openchamber-jira.zip</code> attached. The <code>verify</code> check is required to merge into <code>main</code>.</p>
         <h3>Contributing</h3>
         <p>Open an issue before a substantial change so the contract implications are clear. Run <code>npm run verify</code> before a pull request, and include a test for the behaviour you changed. The site lives in <code>site/</code> and deploys to GitHub Pages on every push to <code>main</code> that touches it.</p>
       </section>
@@ -374,7 +375,6 @@ npm run zip         # openchamber-jira.zip</code></pre>
           <li><strong>Create and edit issues</strong> — needs the tracker contract to grow (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>).</li>
           <li><strong>Token health</strong> — expiry, scopes, and a clear needs-attention state (<a href="https://github.com/pgquiles/openchamber-jira/issues/3" target="_blank" rel="noopener">#3</a>).</li>
           <li><strong>Live verification</strong> against a real Jira Cloud site, and real screenshots (<a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">#12</a>).</li>
-          <li><strong>CI for pull requests and tagged releases</strong> — typecheck, tests, guest check, ZIP artifacts, and branch protection (<a href="https://github.com/pgquiles/openchamber-jira/issues/10" target="_blank" rel="noopener">#10</a>).</li>
         </ol>
         <p>See all <a href="https://github.com/pgquiles/openchamber-jira/issues" target="_blank" rel="noopener">open issues and labels</a> for the full list.</p>
         <p class="next-prev"><a href="index.html">← Back to the overview</a><a href="index.html#install">Install →</a></p>
