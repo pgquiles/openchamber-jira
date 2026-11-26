@@ -67,6 +67,47 @@ The token acts as your Jira user. For the features below, your account needs:
 
 Only issues you can see in Jira appear in OpenChamber.
 
+## Authentication and SSO
+
+This extension uses HTTP Basic auth: your Atlassian account email plus an API
+token. **SSO does not block this.** Atlassian API tokens authenticate even when
+the organization enforces SAML single sign-on or two-step verification, and
+Atlassian does not ask for an extra identity check when an SSO user creates a
+token.
+
+What an organization can still change:
+
+- **API token policy.** An organization admin can block members from creating
+  or using user API tokens, or cap their lifetime, through an Atlassian Guard
+  authentication policy. When that is on, Jira answers 401/403 and the
+  extension cannot override it. The account needs an exception, a service
+  account, or OAuth.
+- **Expiry and revocation.** New tokens expire after one year by default, and
+  admins can revoke them earlier. Reconnect with a fresh token when Jira starts
+  answering 401.
+- **Scopes.** A scoped token needs `read:jira-work`, `write:jira-work` and
+  `read:jira-user`. A classic token works too, with the user's full access.
+- **Product access.** The account must still be a licensed Jira user with
+  permission to browse the projects.
+
+Atlassian's current guidance discourages integrations that collect and store
+personal API tokens. For a company rollout, an organization-approved service
+account is the simplest interim step. OAuth 2.0 three-legged authorization is
+the durable replacement; see the roadmap below for why it is not a one-line
+manifest change for Jira.
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+| --- | --- |
+| 401 after connecting | Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect. |
+| 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
+| Empty picker | The default view is issues **assigned to you**; check the people filter, project access, and that the Jira account is the one you expect. |
+| 429 | Jira rate-limited the site. Wait for the `Retry-After` interval; the extension surfaces the error rather than retrying silently. |
+| “Only Jira Cloud is supported” | The URL points at Jira Server or Data Center. |
+| A transition fails | The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira. |
+
+
 ## What it supports
 
 - **Listing and search** through JQL (`/rest/api/3/search/jql`), newest first.
@@ -107,6 +148,27 @@ Only issues you can see in Jira appear in OpenChamber.
   attachments. Images embedded in a description are left out of the Markdown.
 - Project mapping and session comments are optional OpenChamber features; turn
   them on from the Jira account card after connecting.
+
+## Roadmap
+
+Ordered by what unlocks the most:
+
+1. **OAuth 2.0 3LO** for organizations that block personal API tokens. Jira's
+   3LO tokens are sent to `api.atlassian.com/ex/jira/{cloudId}`, not directly
+   to the site origin, so this needs an upstream way to resolve the cloud id and
+   reach that gateway (or a small relay) in addition to the `auth.oauth` block.
+2. **Create and edit issues** — new items, assignee, priority, labels, and
+   description edits. OpenChamber's tracker contract currently exposes state
+   changes and comments only, so this starts upstream.
+3. **Richer Jira content**: show images and attachments as links, render panels
+   and expandos, keep mentions readable, and surface sprint/story points where
+   the contract allows.
+4. **Rate-limit handling**: honor `Retry-After`, coalesce duplicate reads, and
+   back off on 429 without hiding the failure from the user.
+5. **Release automation**: GitHub Actions for typecheck, tests, guest check,
+   ZIP artifact, and tagged releases; GitHub Pages for the documentation site.
+6. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
+   contractors and shared workstations.
 
 ## Development
 
