@@ -800,9 +800,10 @@ var stateCondition = (state) => {
 };
 var peopleCondition = (people) => {
   switch (people) {
+    case "any":
+      return null;
     case "created":
       return "reporter = currentUser()";
-    case "any":
     case "me":
     default:
       return "assignee = currentUser()";
@@ -818,7 +819,9 @@ var buildJql = (input, priorityNames) => {
   const state = stateCondition(input.state);
   if (state)
     conditions.push(state);
-  conditions.push(peopleCondition(input.people));
+  const people = peopleCondition(input.people);
+  if (people)
+    conditions.push(people);
   if (input.priority === "none") {
     conditions.push("priority is EMPTY");
   } else if (input.priority !== "all") {
@@ -832,7 +835,8 @@ var buildJql = (input, priorityNames) => {
     const escaped = escapeJqlString(query);
     conditions.push(isIssueKey(query) ? `(key = "${escaped}" OR summary ~ "${escaped}")` : `summary ~ "${escaped}"`);
   }
-  return { jql: `${conditions.join(" AND ")} ORDER BY updated DESC`, matchesNothing: false };
+  const where = conditions.length === 0 ? ["project is not EMPTY"] : conditions;
+  return { jql: `${where.join(" AND ")} ORDER BY updated DESC`, matchesNothing: false };
 };
 
 // service/main.ts

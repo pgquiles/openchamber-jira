@@ -197,13 +197,13 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
 
       <section id="find-link">
         <h2><span class="h-num">07</span>Find and link an issue</h2>
-        <p>Type <span class="kbd">@</span> in the composer and choose Jira, or open the reference picker. The default view is <strong>open issues assigned to you</strong>, newest first. Search matches issue keys and summaries.</p>
+        <p>Type <span class="kbd">@</span> in the composer and choose Jira, or open the reference picker. The default view is <strong>open issues you can see</strong>, most recently updated first. Choose <strong>Assigned to me</strong> to narrow it to your queue; search matches issue keys and summaries.</p>
         <table>
           <thead><tr><th>Filter</th><th>Behaviour</th></tr></thead>
           <tbody>
             <tr><td>People · Assigned to me</td><td><code>assignee = currentUser()</code></td></tr>
             <tr><td>People · Created by me</td><td><code>reporter = currentUser()</code></td></tr>
-            <tr><td>People · Everyone</td><td>No people clause; still limited by project permissions</td></tr>
+            <tr><td>People · Anyone</td><td>No people clause; still limited by Jira's project permissions</td></tr>
             <tr><td>State</td><td><code>open</code>, <code>all</code>, <code>todo</code>, <code>in-progress</code>, <code>done</code> mapped to Jira status categories</td></tr>
             <tr><td>Priority</td><td>The site's own priority names; <code>none</code> means an empty priority field</td></tr>
             <tr><td>Project</td><td>Projects act as containers, keyed by project key so the id works in JQL</td></tr>
@@ -266,8 +266,8 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <tbody>
             <tr><td>401 after connecting</td><td>Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect.</td></tr>
             <tr><td>403 on connect</td><td>The account lacks <code>read:jira-user</code> (scoped token), or Jira denied the call. Check scopes and site permissions.</td></tr>
-            <tr><td>Empty picker</td><td>The default view is issues <strong>assigned to you</strong>. Check the people filter, project access, and that the Jira account is the one you expect.</td></tr>
-            <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Everyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
+            <tr><td>Empty picker</td><td>The default view is <strong>open issues you can see</strong>. Check the state filter, project access, and that the Jira account is the one you expect. Choose <strong>Assigned to me</strong> to narrow it.</td></tr>
+            <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Anyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
             <tr><td>429</td><td>Jira rate-limited the site. Wait for the <code>Retry-After</code> interval; the extension surfaces the error rather than retrying silently.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
             <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira (see <a href="#states">States</a>).</td></tr>
