@@ -64,13 +64,12 @@ Capture these against the disposable site, with the test data only:
       and the state control.
 - [ ] Settings → Integrations → Extension accounts, with the test account card.
 
-Use a 1440×900 viewport at 2× scale (the current site images are 2880×1800 and
-similar). Check every capture for tokens, email addresses, real project keys,
-and unrelated sessions before committing it.
+Use a 1440×900 viewport at 2× scale (the four site images are 2880×1800).
+Check every capture for tokens, email addresses, real project keys, and
+unrelated sessions before committing it.
 
-When all four images are replaced, remove the "preview with demo data" caption
-and the demo-note paragraph from `site/index.html`, and remove the #12 item from
-the roadmap sections.
+Replace all four images together, then remove any "demo data" caption or note
+that described the old previews.
 
 ## Recording the result
 
@@ -80,6 +79,31 @@ the roadmap sections.
   #12, and note whether it is extension-side or an upstream tracker-contract
   gap.
 - Keep the checklist in the repository so the next release can repeat it.
+
+## Last run
+
+2026-11-26, OpenChamber 2.8.0 with extension 0.3.0 (folder install) against a
+disposable Jira Cloud site. The test data was one team-managed software project
+and one company-managed project for the screen-gated transition. Full evidence
+is on [#12](https://github.com/pgquiles/openchamber-jira/issues/12); the four
+captures live in `site/assets/screenshots/`.
+
+- Checks 1–10 and 15 passed.
+- Check 11 passed with a caveat: Jira rejected the transition as expected, but
+  the message names the required field by its custom-field id
+  (`customfield_10046`) and the host reports HTTP 500 rather than Jira's 400.
+  Tracked in [#26](https://github.com/pgquiles/openchamber-jira/issues/26).
+- Check 12 passed with a caveat: the ADF comment posted once, a second start
+  was skipped as `already-posted`, and a non-public origin was skipped. The
+  session link itself pointed at a placeholder origin, because the local
+  deployment has no public URL.
+- Check 13 exposed a gap: a revoked token makes Jira answer the issue search
+  with an empty result, so the board goes empty while the account still reads
+  connected and valid. The needs-attention state is the upstream token-health
+  work in [#3](https://github.com/pgquiles/openchamber-jira/issues/3) and
+  [openchamber#7648](https://github.com/openchamber/openchamber/issues/7648).
+  Check 14 passed: reconnecting with a valid token restored the account and
+  the board without reinstalling anything.
 
 ## Cleanup
 
