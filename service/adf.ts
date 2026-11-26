@@ -46,9 +46,13 @@ const fenceFor = (code: string): string => {
 };
 
 const applyMarks = (value: string, marks: AdfMark[] | undefined): string => {
-  if (!marks || marks.length === 0) return value;
+  if (!Array.isArray(marks) || marks.length === 0) return value;
+  const known = marks.filter((mark): mark is AdfMark => (
+    typeof mark === 'object' && mark !== null && typeof mark.type === 'string'
+  ));
+  if (known.length === 0) return value;
   // A link wraps the formatting inside it rather than the other way around.
-  const ordered = [...marks].sort((left, right) => (left.type === 'link' ? 1 : 0) - (right.type === 'link' ? 1 : 0));
+  const ordered = [...known].sort((left, right) => (left.type === 'link' ? 1 : 0) - (right.type === 'link' ? 1 : 0));
   let result = value;
   for (const mark of ordered) {
     switch (mark.type) {
@@ -96,15 +100,52 @@ const inlineNode = (node: AdfNode): string => {
       const url = stringAttr(node.attrs, 'url');
       return url ? `[${url}](${url})` : '';
     }
-    case 'status':
+    case 'status': {
+      const text = stringAttr(node.attrs, 'text');
+      return text ? `**${text}**` : '';
+    }
     case 'date':
       return stringAttr(node.attrs, 'text') ?? '';
     default:
-      return node.content ? inlineText(node.content) : '';
+      if (node.content) return inlineText(node.content);
+      // An unknown leaf keeps a visible name instead of vanishing.
+      return `[${node.type}]`;
   }
 };
 
-type RenderContext = { depth: number };
+type RenderContext = { depth: number; baseUrl: string | null };
+
+const PANEL_LABELS: Record<string, string> = {
+  info: 'Info',
+  note: 'Note',
+  tip: 'Tip',
+  warning: 'Warning',
+  success: 'Success',
+  error: 'Error',
+};
+
+const contextAt = (context: RenderContext, depth: number): RenderContext => ({ ...context, depth });
+
+/**
+ * A media node as a link. Jira writes an inline image as a media id, so the
+ * link points at the attachment endpoint; media with its own URL (an external
+ * image) uses that instead.
+ */
+const mediaLink = (node: AdfNode, context: RenderContext): string => {
+  const label = stringAttr(node.attrs, 'alt') ?? stringAttr(node.attrs, 'title') ?? 'attachment';
+  const url = stringAttr(node.attrs, 'url');
+  if (url) return `[${label}](${url})`;
+  const id = stringAttr(node.attrs, 'id');
+  if (id && context.baseUrl) {
+    return `[${label}](${context.baseUrl}/rest/api/3/attachment/content/${encodeURIComponent(id)})`;
+  }
+  return `[${label}]`;
+};
+
+const renderQuote = (label: string | null, body: string): string => {
+  const quoted = body.split('\n').map((line) => (line ? `> ${line}` : '>')).join('\n');
+  return label === null ? quoted : `> **${label}**\n>\n${quoted}`;
+};
 
 const renderBlocks = (nodes: AdfNode[], context: RenderContext): string[] => {
   const blocks: string[] = [];
@@ -115,8 +156,8 @@ const renderBlocks = (nodes: AdfNode[], context: RenderContext): string[] => {
   return blocks;
 };
 
-const renderCell = (cell: AdfNode): string => (
-  renderBlocks(asNodes(cell.content), { depth: 0 }).join(' ').replace(/\n+/g, ' ').replace(/\|/g, '\\|').trim()
+const renderCell = (cell: AdfNode, context: RenderContext): string => (
+  renderBlocks(asNodes(cell.content), contextAt(context, 0)).join(' ').replace(/\n+/g, ' ').replace(/\|/g, '\\|').trim()
 );
 
 const renderBlock = (node: AdfNode, context: RenderContext): string | null => {
@@ -134,9 +175,26 @@ const renderBlock = (node: AdfNode, context: RenderContext): string | null => {
       return `${fence}${language}\n${code}\n${fence}`;
     }
     case 'blockquote':
-    case 'panel': {
+    case 'panel':
+    case 'expand':
+    case 'nestedExpand': {
       const body = renderBlocks(asNodes(node.content), context).join('\n\n');
-      return body.split('\n').map((line) => (line ? `> ${line}` : '>')).join('\n');
+      const label = node.type === 'panel'
+        ? PANEL_LABELS[stringAttr(node.attrs, 'panelType') ?? '']
+        : stringAttr(node.attrs, 'title');
+      return renderQuote(label ?? null, body);
+    }
+    case 'media':
+      return mediaLink(node, context);
+    case 'mediaSingle':
+    case 'mediaGroup':
+      return renderBlocks(asNodes(node.content), context).join('\n');
+    case 'caption':
+      return `*${inlineText(asNodes(node.content))}*`;
+    case 'blockCard':
+    case 'embedCard': {
+      const url = stringAttr(node.attrs, 'url');
+      return url ? `[${url}](${url})` : `[${node.type}]`;
     }
     case 'rule':
       return '---';
@@ -150,18 +208,15 @@ const renderBlock = (node: AdfNode, context: RenderContext): string | null => {
         const inlineOnly = content.every((child) => [
           'text', 'hardBreak', 'mention', 'emoji', 'inlineCard', 'status', 'date',
         ].includes(child.type));
-        const label = inlineOnly ? inlineText(content) : renderBlocks(content, { depth: context.depth }).join(' ');
+        const label = inlineOnly ? inlineText(content) : renderBlocks(content, context).join(' ');
         return `${'  '.repeat(context.depth)}- [${done ? 'x' : ' '}] ${label}`;
       }).join('\n');
     case 'table':
-      return renderTable(node);
-    case 'mediaSingle':
-    case 'mediaGroup':
-    case 'media':
-      return null;
+      return renderTable(node, context);
     default:
       if (node.content) return renderBlocks(node.content, context).join('\n\n');
-      return null;
+      // Unknown blocks name themselves, so a reader can tell something is missing.
+      return `[${node.type}]`;
   }
 };
 
@@ -171,7 +226,7 @@ const renderList = (node: AdfNode, context: RenderContext): string => {
   const start = ordered ? numberAttr(node.attrs, 'order') ?? 1 : 0;
   return asNodes(node.content).map((item, index) => {
     const marker = ordered ? `${start + index}. ` : '- ';
-    const blocks = renderBlocks(asNodes(item.content), { depth: context.depth + 1 });
+    const blocks = renderBlocks(asNodes(item.content), contextAt(context, context.depth + 1));
     if (blocks.length === 0) return `${indent}${marker.trimEnd()}`;
     const lines: string[] = [];
     blocks.forEach((block, blockIndex) => {
@@ -185,21 +240,24 @@ const renderList = (node: AdfNode, context: RenderContext): string => {
   }).join('\n');
 };
 
-const renderTable = (node: AdfNode): string => {
+const renderTable = (node: AdfNode, context: RenderContext): string => {
   const rows = asNodes(node.content);
   if (rows.length === 0) return '';
   const first = asNodes(rows[0]?.content);
-  const header = `| ${first.map(renderCell).join(' | ')} |`;
+  const header = `| ${first.map((cell) => renderCell(cell, context)).join(' | ')} |`;
   const divider = `| ${first.map(() => '---').join(' | ')} |`;
-  const body = rows.slice(1).map((row) => `| ${asNodes(row.content).map(renderCell).join(' | ')} |`);
+  const body = rows.slice(1).map((row) => `| ${asNodes(row.content).map((cell) => renderCell(cell, context)).join(' | ')} |`);
   return [header, divider, ...body].join('\n');
 };
 
 /** Convert an ADF document from Jira into Markdown; anything else answers ''. */
-export function adfToMarkdown(value: unknown): string {
+export function adfToMarkdown(value: unknown, options: { baseUrl?: string } = {}): string {
   const root = asObject(value);
   if (!root || root.type !== 'doc') return '';
-  const markdown = renderBlocks(asNodes(root.content), { depth: 0 }).join('\n\n');
+  const baseUrl = typeof options.baseUrl === 'string' && options.baseUrl.trim() !== ''
+    ? options.baseUrl.trim().replace(/\/+$/, '')
+    : null;
+  const markdown = renderBlocks(asNodes(root.content), { depth: 0, baseUrl }).join('\n\n');
   return markdown.replace(/\n{3,}/g, '\n\n').trim();
 }
 

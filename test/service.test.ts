@@ -148,10 +148,18 @@ beforeAll(async () => {
           error: { message: 'The forge did not answer', code: 'FORGE_UNREACHABLE' },
         }, { status: 502 });
       }
-      // The host relays content-type and a few numeric headers, never Location.
+      // The host relays content-type, Retry-After and the numeric headers,
+      // never Location.
+      const relayed: Record<string, string> = {
+        'content-type': answer.headers.get('content-type') ?? '',
+      };
+      for (const [name, value] of answer.headers) {
+        const lower = name.toLowerCase();
+        if (lower === 'retry-after' || lower.startsWith('x-ratelimit-')) relayed[lower] = value;
+      }
       return Response.json({
         status: answer.status,
-        headers: { 'content-type': answer.headers.get('content-type') ?? '' },
+        headers: relayed,
         body: await answer.text(),
       });
     },
@@ -393,6 +401,29 @@ describe('items.get', () => {
     expect(item?.identifier).toBe('PROJ-1');
   });
 
+  test('links inline media through the site’s attachment endpoint', async () => {
+    const issue = jira.issues.get('PROJ-5');
+    const saved = issue?.description;
+    if (issue) {
+      issue.description = {
+        type: 'doc',
+        version: 1,
+        content: [{
+          type: 'mediaSingle',
+          content: [{ type: 'media', attrs: { id: 'media-1', alt: 'dialog screenshot' } }],
+        }],
+      };
+    }
+    try {
+      const { item } = await read('items.get', { id: 'PROJ-5' });
+      expect(item?.description).toBe(
+        `[dialog screenshot](${jira.origin}/rest/api/3/attachment/content/media-1)`,
+      );
+    } finally {
+      if (issue) issue.description = saved;
+    }
+  });
+
   test('reads the parent of a subtask', async () => {
     const { item } = await read('items.get', { id: 'PROJ-2' });
     expect(item?.parent).toMatchObject({
@@ -564,7 +595,61 @@ describe('items.updateState', () => {
 });
 
 describe('failures', () => {
-  test('surfaces Jira’s rate limit instead of retrying silently', async () => {
+  test('waits for Retry-After and retries a rate-limited read', async () => {
+    const searches = () => jira.requests.filter((request) => request.path === '/rest/api/3/search/jql').length;
+    const before = searches();
+    jira.failNext(429, 'Rate limit exceeded for this site.', { 'retry-after': '1' });
+
+    const started = Date.now();
+    const page = await read('items.list', LIST);
+
+    expect(Date.now() - started).toBeGreaterThanOrEqual(900);
+    expect(page.items.length).toBeGreaterThan(0);
+    expect(searches()).toBe(before + 2);
+  });
+
+  test('retries a 503 when Jira asks for it', async () => {
+    jira.failNext(503, 'The service is temporarily unavailable.', { 'retry-after': '0' });
+    const page = await read('items.list', LIST);
+    expect(page.items.length).toBeGreaterThan(0);
+  });
+
+  test('gives up after three attempts and keeps Jira’s message', async () => {
+    const searches = () => jira.requests.filter((request) => request.path === '/rest/api/3/search/jql').length;
+    const before = searches();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      jira.failNext(429, 'Rate limit exceeded for this site.', { 'retry-after': '0' });
+    }
+    const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
+    expect(refused).toMatchObject({ ok: false, error: { status: 429 } });
+    expect(refused.ok === false && refused.error.message).toContain('Rate limit exceeded');
+    expect(searches()).toBe(before + 3);
+  });
+
+  test('refuses a wait longer than its budget and names the reset time', async () => {
+    jira.failNext(429, 'Rate limit exceeded for this site.', { 'retry-after': '3600' });
+    const started = Date.now();
+    const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(refused).toMatchObject({ ok: false, error: { status: 429 } });
+    expect(refused.ok === false && refused.error.message).toContain('Try again in 3600 s');
+  });
+
+  test('does not retry a write', async () => {
+    const posts = () => jira.requests.filter((request) => (
+      request.path === '/rest/api/3/issue/PROJ-3/comment' && request.method === 'POST'
+    )).length;
+    const before = posts();
+    jira.failNext(429, 'Rate limit exceeded for this site.', { 'retry-after': '0' });
+
+    const refused = await call('comments.create', {
+      token: 'jira-token', account: ACCOUNT, input: { identifier: 'PROJ-3', body: 'hello' },
+    });
+    expect(refused).toMatchObject({ ok: false, error: { status: 429 } });
+    expect(posts()).toBe(before + 1);
+  });
+
+  test('surfaces a rate limit that carries no Retry-After', async () => {
     jira.failNext(429, 'Rate limit exceeded for this site.');
     const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
     expect(refused).toMatchObject({ ok: false, error: { status: 429 } });

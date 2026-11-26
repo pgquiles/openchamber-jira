@@ -130,8 +130,49 @@ const serverFailure = (response: SourceControlOutboundResponse): CallError => {
   if (response.status === 401) return new CallError('Jira refused the credential (401).', 401);
   const detail = jiraMessage(response);
   const verb = response.status === 429 ? 'Jira rate-limited the request' : 'Jira answered';
-  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : '.'}`, response.status);
+  // A reset time the user can act on beats a bare status code.
+  const wait = retryAfterMs(response.headers);
+  const hint = wait === null ? '' : ` Try again in ${Math.ceil(wait / 1_000)} s.`;
+  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : '.'}${hint}`, response.status);
 };
+
+/** A header by name, whatever its case; the host relays lower-case names. */
+const headerValue = (headers: Record<string, string> | undefined, name: string): string | null => {
+  if (!headers) return null;
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() !== name) continue;
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+  return null;
+};
+
+/**
+ * `Retry-After` in milliseconds: delta-seconds, or the HTTP-date form some
+ * proxies send instead. Null when Jira asked for no particular wait.
+ */
+const retryAfterMs = (headers: Record<string, string> | undefined): number | null => {
+  const value = headerValue(headers, 'retry-after');
+  if (value === null) return null;
+  if (/^\d+$/.test(value)) return Number(value) * 1_000;
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
+};
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_BUDGET_MS = 10_000;
+
+/**
+ * Reads Jira's reset time and retries a read while the wait fits the budget.
+ * Writes are never retried: a 429 means the request was refused, but a 503 or
+ * a timeout can arrive after Jira acted, and repeating a comment or a
+ * transition would duplicate it.
+ */
+const retryableRead = (method: 'GET' | 'POST', status: number, attempt: number): boolean => (
+  method === 'GET' && (status === 429 || status === 503) && attempt < RETRY_MAX_ATTEMPTS
+);
 
 const api = async <T,>(
   call: Call,
@@ -139,21 +180,33 @@ const api = async <T,>(
   path: string,
   options: { query?: Record<string, string>; body?: unknown } = {},
 ): Promise<T> => {
-  const response = await outbound.request(call.handle, {
-    method,
-    path,
-    ...(options.query ? { query: options.query } : {}),
-    headers: options.body
-      ? { accept: 'application/json', 'content-type': 'application/json' }
-      : { accept: 'application/json' },
-    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
-  });
-  if (response.status >= 400) throw serverFailure(response);
-  if (response.status === 204 || response.body.trim() === '') return undefined as T;
-  try {
-    return JSON.parse(response.body) as T;
-  } catch {
-    throw new CallError('Jira answered with something other than JSON.', 502);
+  const deadline = Date.now() + RETRY_BUDGET_MS;
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await outbound.request(call.handle, {
+      method,
+      path,
+      ...(options.query ? { query: options.query } : {}),
+      headers: options.body
+        ? { accept: 'application/json', 'content-type': 'application/json' }
+        : { accept: 'application/json' },
+      ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+    });
+    if (response.status >= 400) {
+      const failure = serverFailure(response);
+      if (!retryableRead(method, response.status, attempt)) throw failure;
+      // Nothing to wait on, or a wait past the budget: report it now rather
+      // than holding the host's read open.
+      const wait = retryAfterMs(response.headers);
+      if (wait === null || Date.now() + wait > deadline) throw failure;
+      await sleep(wait);
+      continue;
+    }
+    if (response.status === 204 || response.body.trim() === '') return undefined as T;
+    try {
+      return JSON.parse(response.body) as T;
+    } catch {
+      throw new CallError('Jira answered with something other than JSON.', 502);
+    }
   }
 };
 
@@ -239,17 +292,17 @@ const progressOf = (children: TrackerProviderItemSummary[], more: boolean): Trac
   return { total: children.length, done, more };
 };
 
-const descriptionOf = (issue: JiraIssue): string | null => {
-  const markdown = adfToMarkdown(issue.fields?.description);
+const descriptionOf = (issue: JiraIssue, instance: string): string | null => {
+  const markdown = adfToMarkdown(issue.fields?.description, { baseUrl: instance });
   return markdown === '' ? null : truncate(markdown, 262_144);
 };
 
-const commentOf = (comment: JiraComment): TrackerProviderComment | null => {
+const commentOf = (comment: JiraComment, instance: string): TrackerProviderComment | null => {
   const id = comment.id === undefined ? null : String(comment.id);
   if (!id) return null;
   return {
     id: truncate(id, 1_024),
-    body: truncate(adfToMarkdown(comment.body), 65_536),
+    body: truncate(adfToMarkdown(comment.body, { baseUrl: instance }), 65_536),
     createdAt: textOf(comment.created),
     author: personOf(comment.author),
   };
@@ -310,7 +363,7 @@ const loadItem = async (call: Call, id: string, withComments: boolean): Promise<
 
   const item: TrackerProviderItem = {
     ...summary,
-    description: descriptionOf(issue),
+    description: descriptionOf(issue, call.instance),
   };
 
   const fields = issue.fields ?? {};
@@ -368,7 +421,7 @@ const loadItem = async (call: Call, id: string, withComments: boolean): Promise<
       { query: { maxResults: '100', orderBy: '-created' } },
     );
     const comments = (answer.comments ?? []).flatMap((comment) => {
-      const value = commentOf(comment);
+      const value = commentOf(comment, call.instance);
       return value ? [value] : [];
     }).reverse(); // newest first from Jira, chronological in the preview
     // Keep the preview inside the host's response budget: drop the oldest

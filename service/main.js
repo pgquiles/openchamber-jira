@@ -294,9 +294,12 @@ var fenceFor = (code) => {
   return "`".repeat(longest + 1);
 };
 var applyMarks = (value, marks) => {
-  if (!marks || marks.length === 0)
+  if (!Array.isArray(marks) || marks.length === 0)
     return value;
-  const ordered = [...marks].sort((left, right) => (left.type === "link" ? 1 : 0) - (right.type === "link" ? 1 : 0));
+  const known = marks.filter((mark) => typeof mark === "object" && mark !== null && typeof mark.type === "string");
+  if (known.length === 0)
+    return value;
+  const ordered = [...known].sort((left, right) => (left.type === "link" ? 1 : 0) - (right.type === "link" ? 1 : 0));
   let result = value;
   for (const mark of ordered) {
     switch (mark.type) {
@@ -345,12 +348,45 @@ var inlineNode = (node) => {
       const url = stringAttr(node.attrs, "url");
       return url ? `[${url}](${url})` : "";
     }
-    case "status":
+    case "status": {
+      const text = stringAttr(node.attrs, "text");
+      return text ? `**${text}**` : "";
+    }
     case "date":
       return stringAttr(node.attrs, "text") ?? "";
     default:
-      return node.content ? inlineText(node.content) : "";
+      if (node.content)
+        return inlineText(node.content);
+      return `[${node.type}]`;
   }
+};
+var PANEL_LABELS = {
+  info: "Info",
+  note: "Note",
+  tip: "Tip",
+  warning: "Warning",
+  success: "Success",
+  error: "Error"
+};
+var contextAt = (context, depth) => ({ ...context, depth });
+var mediaLink = (node, context) => {
+  const label = stringAttr(node.attrs, "alt") ?? stringAttr(node.attrs, "title") ?? "attachment";
+  const url = stringAttr(node.attrs, "url");
+  if (url)
+    return `[${label}](${url})`;
+  const id = stringAttr(node.attrs, "id");
+  if (id && context.baseUrl) {
+    return `[${label}](${context.baseUrl}/rest/api/3/attachment/content/${encodeURIComponent(id)})`;
+  }
+  return `[${label}]`;
+};
+var renderQuote = (label, body) => {
+  const quoted = body.split(`
+`).map((line) => line ? `> ${line}` : ">").join(`
+`);
+  return label === null ? quoted : `> **${label}**
+>
+${quoted}`;
 };
 var renderBlocks = (nodes, context) => {
   const blocks = [];
@@ -361,7 +397,7 @@ var renderBlocks = (nodes, context) => {
   }
   return blocks;
 };
-var renderCell = (cell) => renderBlocks(asNodes(cell.content), { depth: 0 }).join(" ").replace(/\n+/g, " ").replace(/\|/g, "\\|").trim();
+var renderCell = (cell, context) => renderBlocks(asNodes(cell.content), contextAt(context, 0)).join(" ").replace(/\n+/g, " ").replace(/\|/g, "\\|").trim();
 var renderBlock = (node, context) => {
   switch (node.type) {
     case "paragraph":
@@ -379,13 +415,27 @@ ${code}
 ${fence}`;
     }
     case "blockquote":
-    case "panel": {
+    case "panel":
+    case "expand":
+    case "nestedExpand": {
       const body = renderBlocks(asNodes(node.content), context).join(`
 
 `);
-      return body.split(`
-`).map((line) => line ? `> ${line}` : ">").join(`
+      const label = node.type === "panel" ? PANEL_LABELS[stringAttr(node.attrs, "panelType") ?? ""] : stringAttr(node.attrs, "title");
+      return renderQuote(label ?? null, body);
+    }
+    case "media":
+      return mediaLink(node, context);
+    case "mediaSingle":
+    case "mediaGroup":
+      return renderBlocks(asNodes(node.content), context).join(`
 `);
+    case "caption":
+      return `*${inlineText(asNodes(node.content))}*`;
+    case "blockCard":
+    case "embedCard": {
+      const url = stringAttr(node.attrs, "url");
+      return url ? `[${url}](${url})` : `[${node.type}]`;
     }
     case "rule":
       return "---";
@@ -405,22 +455,18 @@ ${fence}`;
           "status",
           "date"
         ].includes(child.type));
-        const label = inlineOnly ? inlineText(content) : renderBlocks(content, { depth: context.depth }).join(" ");
+        const label = inlineOnly ? inlineText(content) : renderBlocks(content, context).join(" ");
         return `${"  ".repeat(context.depth)}- [${done ? "x" : " "}] ${label}`;
       }).join(`
 `);
     case "table":
-      return renderTable(node);
-    case "mediaSingle":
-    case "mediaGroup":
-    case "media":
-      return null;
+      return renderTable(node, context);
     default:
       if (node.content)
         return renderBlocks(node.content, context).join(`
 
 `);
-      return null;
+      return `[${node.type}]`;
   }
 };
 var renderList = (node, context) => {
@@ -429,7 +475,7 @@ var renderList = (node, context) => {
   const start = ordered ? numberAttr(node.attrs, "order") ?? 1 : 0;
   return asNodes(node.content).map((item, index) => {
     const marker = ordered ? `${start + index}. ` : "- ";
-    const blocks = renderBlocks(asNodes(item.content), { depth: context.depth + 1 });
+    const blocks = renderBlocks(asNodes(item.content), contextAt(context, context.depth + 1));
     if (blocks.length === 0)
       return `${indent}${marker.trimEnd()}`;
     const lines = [];
@@ -449,22 +495,23 @@ var renderList = (node, context) => {
   }).join(`
 `);
 };
-var renderTable = (node) => {
+var renderTable = (node, context) => {
   const rows = asNodes(node.content);
   if (rows.length === 0)
     return "";
   const first = asNodes(rows[0]?.content);
-  const header = `| ${first.map(renderCell).join(" | ")} |`;
+  const header = `| ${first.map((cell) => renderCell(cell, context)).join(" | ")} |`;
   const divider = `| ${first.map(() => "---").join(" | ")} |`;
-  const body = rows.slice(1).map((row) => `| ${asNodes(row.content).map(renderCell).join(" | ")} |`);
+  const body = rows.slice(1).map((row) => `| ${asNodes(row.content).map((cell) => renderCell(cell, context)).join(" | ")} |`);
   return [header, divider, ...body].join(`
 `);
 };
-function adfToMarkdown(value) {
+function adfToMarkdown(value, options = {}) {
   const root = asObject(value);
   if (!root || root.type !== "doc")
     return "";
-  const markdown = renderBlocks(asNodes(root.content), { depth: 0 }).join(`
+  const baseUrl = typeof options.baseUrl === "string" && options.baseUrl.trim() !== "" ? options.baseUrl.trim().replace(/\/+$/, "") : null;
+  const markdown = renderBlocks(asNodes(root.content), { depth: 0, baseUrl }).join(`
 
 `);
   return markdown.replace(/\n{3,}/g, `
@@ -879,24 +926,63 @@ var serverFailure = (response) => {
     return new CallError("Jira refused the credential (401).", 401);
   const detail = jiraMessage(response);
   const verb = response.status === 429 ? "Jira rate-limited the request" : "Jira answered";
-  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : "."}`, response.status);
+  const wait = retryAfterMs(response.headers);
+  const hint = wait === null ? "" : ` Try again in ${Math.ceil(wait / 1000)} s.`;
+  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : "."}${hint}`, response.status);
 };
+var headerValue = (headers, name) => {
+  if (!headers)
+    return null;
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() !== name)
+      continue;
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  }
+  return null;
+};
+var retryAfterMs = (headers) => {
+  const value = headerValue(headers, "retry-after");
+  if (value === null)
+    return null;
+  if (/^\d+$/.test(value))
+    return Number(value) * 1000;
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
+};
+var sleep = (ms) => new Promise((resolve) => {
+  setTimeout(resolve, ms);
+});
+var RETRY_MAX_ATTEMPTS = 3;
+var RETRY_BUDGET_MS = 1e4;
+var retryableRead = (method, status, attempt) => method === "GET" && (status === 429 || status === 503) && attempt < RETRY_MAX_ATTEMPTS;
 var api = async (call, method, path, options = {}) => {
-  const response = await outbound.request(call.handle, {
-    method,
-    path,
-    ...options.query ? { query: options.query } : {},
-    headers: options.body ? { accept: "application/json", "content-type": "application/json" } : { accept: "application/json" },
-    ...options.body ? { body: JSON.stringify(options.body) } : {}
-  });
-  if (response.status >= 400)
-    throw serverFailure(response);
-  if (response.status === 204 || response.body.trim() === "")
-    return;
-  try {
-    return JSON.parse(response.body);
-  } catch {
-    throw new CallError("Jira answered with something other than JSON.", 502);
+  const deadline = Date.now() + RETRY_BUDGET_MS;
+  for (let attempt = 1;; attempt += 1) {
+    const response = await outbound.request(call.handle, {
+      method,
+      path,
+      ...options.query ? { query: options.query } : {},
+      headers: options.body ? { accept: "application/json", "content-type": "application/json" } : { accept: "application/json" },
+      ...options.body ? { body: JSON.stringify(options.body) } : {}
+    });
+    if (response.status >= 400) {
+      const failure = serverFailure(response);
+      if (!retryableRead(method, response.status, attempt))
+        throw failure;
+      const wait = retryAfterMs(response.headers);
+      if (wait === null || Date.now() + wait > deadline)
+        throw failure;
+      await sleep(wait);
+      continue;
+    }
+    if (response.status === 204 || response.body.trim() === "")
+      return;
+    try {
+      return JSON.parse(response.body);
+    } catch {
+      throw new CallError("Jira answered with something other than JSON.", 502);
+    }
   }
 };
 var orNull = async (request) => {
@@ -979,17 +1065,17 @@ var progressOf = (children, more) => {
   const done = children.filter((child) => child.state?.category === "done").length;
   return { total: children.length, done, more };
 };
-var descriptionOf = (issue) => {
-  const markdown = adfToMarkdown(issue.fields?.description);
+var descriptionOf = (issue, instance) => {
+  const markdown = adfToMarkdown(issue.fields?.description, { baseUrl: instance });
   return markdown === "" ? null : truncate(markdown, 262144);
 };
-var commentOf = (comment) => {
+var commentOf = (comment, instance) => {
   const id = comment.id === undefined ? null : String(comment.id);
   if (!id)
     return null;
   return {
     id: truncate(id, 1024),
-    body: truncate(adfToMarkdown(comment.body), 65536),
+    body: truncate(adfToMarkdown(comment.body, { baseUrl: instance }), 65536),
     createdAt: textOf(comment.created),
     author: personOf(comment.author)
   };
@@ -1039,7 +1125,7 @@ var loadItem = async (call, id, withComments) => {
     return null;
   const item = {
     ...summary,
-    description: descriptionOf(issue)
+    description: descriptionOf(issue, call.instance)
   };
   const fields = issue.fields ?? {};
   let parent = fields.parent ? summaryOf(call, fields.parent) : null;
@@ -1091,7 +1177,7 @@ var loadItem = async (call, id, withComments) => {
   if (withComments) {
     const answer = await api(call, "GET", `/rest/api/3/issue/${seg(summary.identifier)}/comment`, { query: { maxResults: "100", orderBy: "-created" } });
     const comments = (answer.comments ?? []).flatMap((comment) => {
-      const value = commentOf(comment);
+      const value = commentOf(comment, call.instance);
       return value ? [value] : [];
     }).reverse();
     const byteLength = (comment) => Buffer.byteLength(comment.body, "utf8");
