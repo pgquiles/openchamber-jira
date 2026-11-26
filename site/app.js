@@ -65,4 +65,24 @@
     }, { rootMargin: '-90px 0px -68% 0px', threshold: 0 });
     for (const target of targets) observer.observe(target);
   }
+  const lightbox = document.getElementById('lightbox');
+  if (lightbox && typeof lightbox.showModal === 'function') {
+    const viewer = document.getElementById('lightbox-img');
+    const caption = document.getElementById('lightbox-caption');
+    const close = lightbox.querySelector('.lightbox-close');
+    for (const trigger of document.querySelectorAll('[data-zoom]')) {
+      trigger.addEventListener('click', () => {
+        const source = trigger.querySelector('img');
+        if (!source || !viewer || !caption) return;
+        viewer.src = source.currentSrc || source.src;
+        viewer.alt = source.alt;
+        caption.textContent = trigger.getAttribute('data-caption') || '';
+        lightbox.showModal();
+      });
+    }
+    lightbox.addEventListener('click', (event) => {
+      if (event.target === lightbox) lightbox.close();
+    });
+    if (close) close.addEventListener('click', () => lightbox.close());
+  }
 })();
