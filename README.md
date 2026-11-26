@@ -171,7 +171,7 @@ manifest change for Jira.
 | Can't reach a project in the board's project picker | OpenChamber draws that menu and it has no scrollbar on 2.8.0 when a site has many projects. This is a host bug, not the extension; see [openchamber#7642](https://github.com/openchamber/openchamber/issues/7642). Use the composer's **+ → Link Jira Issue** picker, which has its own project filter and search. |
 | No comment box in the issue detail | Read-only by host design in 2.8.0: comments are shown, but no tracker comment composer is drawn. `comments.create` is used only by **Session comments**. Tracked upstream in [openchamber#7641](https://github.com/openchamber/openchamber/issues/7641). |
 | Can't change status in the composer picker's preview | Expected: that preview only selects and links. Open the issue from the **issues board**; its detail has the state menu. |
-| 429 | Jira rate-limited the site. Wait for the `Retry-After` interval; the extension surfaces the error rather than retrying silently. |
+| 429 | Jira rate-limited the site. The extension waits for `Retry-After` on reads (up to 3 attempts, 10 s total) and shows Jira's message with the reset time when it gives up. Writes are not retried. |
 | “Only Jira Cloud is supported” | The URL points at Jira Server or Data Center. |
 | A transition fails | The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira. |
 
@@ -193,7 +193,8 @@ manifest change for Jira.
   container id works directly in JQL.
 - **Details**: Markdown description converted from Atlassian Document Format,
   up to 100 comments (shown read-only, see above), parent and children, and a
-  done/total count.
+  done/total count. Media and attachments become links, panels and expandos
+  keep their tone or title, and status lozenges render as bold text.
 - **Children**: native sub-tasks and parent, plus team-managed epic children and
   company-managed **Epic Link** children. The Epic Link field is discovered by
   its custom-field schema, so localized field names still work. A child list
@@ -224,10 +225,16 @@ manifest change for Jira.
   fields) cannot be completed through the tracker contract. Jira's own error is
   shown instead of guessing values; it names the fields, and the issue header
   opens the item in Jira to finish the step.
-- Rate limits (HTTP 429) and other Jira errors are surfaced as-is, not retried.
-  Duplicate reads are coalesced by OpenChamber's read cache.
-- The extension does not create, edit, or delete issues, and does not handle
-  attachments. Images embedded in a description are left out of the Markdown.
+- Reads that Jira rate-limits (429, or 503 with `Retry-After`) are retried, up
+  to three attempts and 10 seconds total. Writes are never retried, so a
+  comment or transition cannot be duplicated; when the retries run out, the
+  error names the reset time. Duplicate reads are also coalesced by
+  OpenChamber's read cache.
+- The extension does not create, edit, or delete issues, and does not upload
+  attachments. Inline media and attachments in a description appear as links to
+  Jira's attachment endpoint; media that is not an attachment opens only in
+  Jira. A panel or expando keeps its tone or title, and an ADF node the
+  converter does not know appears as `[nodeType]` rather than disappearing.
 - Project mapping and session comments are optional OpenChamber features; turn
   them on from the Jira account card after connecting.
 
@@ -252,15 +259,10 @@ Ordered by what unlocks the most:
    ([#16](https://github.com/pgquiles/openchamber-jira/issues/16)). Needs a
    guest tracker read path upstream; the sketch is in
    [`docs/mockups/rail-panel.png`](docs/mockups/rail-panel.png).
-5. **Richer Jira content**: show images and attachments as links, keep panel
-   and expando context, and surface sprint/story points where the contract
-   allows
-   ([#5](https://github.com/pgquiles/openchamber-jira/issues/5),
-   [#6](https://github.com/pgquiles/openchamber-jira/issues/6)).
-6. **Rate-limit handling**: honor `Retry-After` and back off on 429 without
-   hiding the failure from the user (duplicate reads are already coalesced)
-   ([#4](https://github.com/pgquiles/openchamber-jira/issues/4)).
-7. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
+5. **More Jira fields**: surface sprint, story points, due date, and
+   components where the tracker contract allows
+   ([#6](https://github.com/pgquiles/openchamber-jira/issues/6)).
+6. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
    contractors and shared workstations
    ([#9](https://github.com/pgquiles/openchamber-jira/issues/9)).
 8. **Live verification and real screenshots** against a disposable Jira Cloud

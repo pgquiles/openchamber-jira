@@ -236,7 +236,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
         <h2><span class="h-num">08</span>Read an issue</h2>
         <p>The issue panel shows the summary, status, assignee, priority, project, and labels, plus:</p>
         <ul>
-          <li><strong>Description</strong> — converted from Atlassian Document Format to Markdown. Paragraphs, headings, lists, code blocks, tables, links, mentions, and inline cards are handled.</li>
+          <li><strong>Description</strong> — converted from Atlassian Document Format to Markdown. Paragraphs, headings, lists, code blocks, tables, links, mentions, inline cards, media and attachments as links, panel tones, expando titles, and status lozenges are handled. An ADF node the converter does not know appears as <code>[nodeType]</code> instead of disappearing.</li>
           <li><strong>Comments</strong> — up to 100, read-only in the detail view (see <a href="#comments">Comments</a>). With the newest kept if the response budget is exceeded; when even those do not fit, the oldest comments are dropped.</li>
           <li><strong>Parent and children</strong> — native sub-tasks and parent, team-managed epic children, and company-managed Epic Link children. The Epic Link field is discovered by its custom-field schema, so localized field names still work.</li>
           <li><strong>Done / total</strong> — a count for the child issues Jira returns, with a marker when Jira truncates the list.</li>
@@ -292,7 +292,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
             <tr><td>No comment box in the issue detail</td><td>Read-only by host design in 2.8.0: comments are shown, but no tracker comment composer is drawn. <code>comments.create</code> is used only by <strong>Session comments</strong>. Tracked in <a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a>.</td></tr>
             <tr><td>Can't change status in the composer picker's preview</td><td>Expected: the composer preview is for choosing an issue and is read-only. Open the issue from the issues board; its detail has the state menu.</td></tr>
             <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Anyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
-            <tr><td>429</td><td>Jira rate-limited the site. Wait for the <code>Retry-After</code> interval; the extension surfaces the error rather than retrying silently.</td></tr>
+            <tr><td>429</td><td>Jira rate-limited the site. Reads wait for <code>Retry-After</code> (3 attempts, 10 s total); writes are not retried, and the error names the reset time when the wait is too long.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
             <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Jira's error names them; open the issue from the header link and complete that step in Jira (see <a href="#states">States</a>).</td></tr>
             <tr><td>Comments look short</td><td>Only the newest comments fit the response budget; the oldest were left out. Read the full thread in Jira.</td></tr>
@@ -326,8 +326,8 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
             <tr><td>Deployment</td><td>Jira Cloud only; Server and Data Center are refused.</td><td>—</td></tr>
             <tr><td>Authoring</td><td>No create, edit, or delete; no assignee or priority changes.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a></td></tr>
             <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed here; Jira's error names them and the issue header opens Jira.</td><td>—</td></tr>
-            <tr><td>Rate limits</td><td>429 is shown, not retried; no <code>Retry-After</code> wait.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/4" target="_blank" rel="noopener">#4</a></td></tr>
-            <tr><td>Rich content</td><td>Images and attachments omitted; panels and expandos simplified.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/5" target="_blank" rel="noopener">#5</a></td></tr>
+            <tr><td>Rate limits</td><td>Reads retry 429 and 503 with <code>Retry-After</code> (3 attempts, 10 s total). Writes are not retried, so nothing is duplicated; a wait past the budget fails with the reset time.</td><td>—</td></tr>
+            <tr><td>Rich content</td><td>Media and attachments become links; panels and expandos keep their tone or title; status lozenges render bold. Media that is not an attachment opens only in Jira.</td><td>—</td></tr>
             <tr><td>Custom fields</td><td>Sprint, story points, and due date are not in the preview.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/6" target="_blank" rel="noopener">#6</a></td></tr>
             <tr><td>Containers</td><td>Projects only; no boards or sprints.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/7" target="_blank" rel="noopener">#7</a></td></tr>
             <tr><td>Filters</td><td>Fixed people/state/priority filters; no saved filters or raw JQL.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/8" target="_blank" rel="noopener">#8</a></td></tr>
