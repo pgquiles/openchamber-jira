@@ -41,7 +41,7 @@
 <main id="main">
   <div class="docs-hero">
     <div class="shell">
-      <span class="eyebrow">Documentation · v0.1.0</span>
+      <span class="eyebrow">Documentation · v0.2.0</span>
       <h1>Everything it does, and<br>everything it <em style="font-style:italic;color:var(--olive)">doesn't.</em></h1>
       <p>The Jira Cloud tracker extension for OpenChamber: install, connect, permissions, SSO policy, daily use, troubleshooting, and the limits that are deliberately left open.</p>
     </div>
@@ -205,7 +205,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
         <div class="callout info">
           <span class="callout-title">What “rail panel” means (and why there is not one)</span>
           <p>OpenChamber's right rail is the strip of panel icons beside the chat: Git, Files, Terminal, and any extension that ships a panel page. An extension gets one by pointing <code>contributes.panel.entry</code> at an HTML page. This extension's panel has no <code>entry</code>, so no Jira icon or Jira panel appears there. The tracker contract itself only draws the board tab, the composer picker, and the detail view.</p>
-          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.1.0: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
+          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.2.0: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
         </div>
         <h3>Status and comments</h3>
         <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's error, which names the missing fields (see <a href="#states">States and transitions</a>).</p>
