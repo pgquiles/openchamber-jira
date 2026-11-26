@@ -9,12 +9,18 @@ The extension talks to Jira REST API v3 with the Atlassian account's email and
 an API token. OpenChamber keeps the token; the extension's service never sees
 it and reaches Jira only through OpenChamber's outbound proxy.
 
+- Website and documentation: <https://pgquiles.github.io/openchamber-jira/>
+- Issues and roadmap: <https://github.com/pgquiles/openchamber-jira/issues>
+- Latest ZIP: <https://github.com/pgquiles/openchamber-jira/releases/latest/download/openchamber-jira.zip>
+
 Requires OpenChamber **2.8.0** or newer, and a Jira **Cloud** site. Jira Server
 and Data Center are refused.
 
 ## Install
 
-1. Build the service bundle once (development machines only):
+1. Download `openchamber-jira.zip` from the
+   [latest release](https://github.com/pgquiles/openchamber-jira/releases/latest),
+   or build it from a checkout (development machines only):
 
    ```bash
    npm install
@@ -153,22 +159,37 @@ manifest change for Jira.
 
 Ordered by what unlocks the most:
 
-1. **OAuth 2.0 3LO** for organizations that block personal API tokens. Jira's
-   3LO tokens are sent to `api.atlassian.com/ex/jira/{cloudId}`, not directly
-   to the site origin, so this needs an upstream way to resolve the cloud id and
+1. **OAuth 2.0 3LO** for organizations that block personal API tokens
+   ([#1](https://github.com/pgquiles/openchamber-jira/issues/1)). Jira's 3LO
+   tokens are sent to `api.atlassian.com/ex/jira/{cloudId}`, not directly to
+   the site origin, so this needs an upstream way to resolve the cloud id and
    reach that gateway (or a small relay) in addition to the `auth.oauth` block.
 2. **Create and edit issues** — new items, assignee, priority, labels, and
-   description edits. OpenChamber's tracker contract currently exposes state
-   changes and comments only, so this starts upstream.
-3. **Richer Jira content**: show images and attachments as links, render panels
+   description edits
+   ([#2](https://github.com/pgquiles/openchamber-jira/issues/2)). OpenChamber's
+   tracker contract currently exposes state changes and comments only, so this
+   starts upstream.
+3. **Token health** — expiry, missing scopes, and a specific needs-attention
+   state ([#3](https://github.com/pgquiles/openchamber-jira/issues/3)).
+4. **Richer Jira content**: show images and attachments as links, render panels
    and expandos, keep mentions readable, and surface sprint/story points where
-   the contract allows.
-4. **Rate-limit handling**: honor `Retry-After`, coalesce duplicate reads, and
-   back off on 429 without hiding the failure from the user.
-5. **Release automation**: GitHub Actions for typecheck, tests, guest check,
-   ZIP artifact, and tagged releases; GitHub Pages for the documentation site.
-6. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
-   contractors and shared workstations.
+   the contract allows
+   ([#5](https://github.com/pgquiles/openchamber-jira/issues/5),
+   [#6](https://github.com/pgquiles/openchamber-jira/issues/6)).
+5. **Rate-limit handling**: honor `Retry-After`, coalesce duplicate reads, and
+   back off on 429 without hiding the failure from the user
+   ([#4](https://github.com/pgquiles/openchamber-jira/issues/4)).
+6. **CI and releases**: GitHub Actions for typecheck, tests, guest check, ZIP
+   artifact, and tagged releases
+   ([#10](https://github.com/pgquiles/openchamber-jira/issues/10)).
+7. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
+   contractors and shared workstations
+   ([#9](https://github.com/pgquiles/openchamber-jira/issues/9)).
+8. **Live verification and real screenshots** against a disposable Jira Cloud
+   site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)).
+
+The website lives in `site/` and deploys to GitHub Pages from `main` through
+`.github/workflows/pages.yml`.
 
 ## Development
 

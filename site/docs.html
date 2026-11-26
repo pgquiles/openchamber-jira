@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — OpenChamber Jira</title>
+<meta name="description" content="Install, connect, and troubleshoot the Jira Cloud tracker extension for OpenChamber. Permissions, SSO policy, limits, and development.">
+<meta name="theme-color" content="#f4ecdf">
+<meta property="og:title" content="OpenChamber Jira — documentation">
+<meta property="og:description" content="Install, connect, and troubleshoot the Jira Cloud tracker extension for OpenChamber.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="shell header-in">
+    <a class="brand" href="index.html" aria-label="OpenChamber Jira home">
+      <img src="assets/icon.svg" alt="" width="28" height="28">
+      <span class="brand-name">OpenChamber Jira<small>tracker extension</small></span>
+    </a>
+    <button class="menu" type="button" aria-expanded="false" aria-controls="nav" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#screenshots">Screenshots</a>
+      <a href="index.html#security">SSO</a>
+      <a href="index.html#limits">Limits</a>
+      <a href="index.html#roadmap">Roadmap</a>
+      <a href="docs.html" class="active">Docs</a>
+    </nav>
+    <div class="header-cta">
+      <a class="btn btn-ghost btn-sm" href="https://github.com/pgquiles/openchamber-jira" target="_blank" rel="noopener">GitHub <span class="arrow-up-right" aria-hidden="true"></span></a>
+      <a class="btn btn-primary btn-sm" href="index.html#install">Install</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="docs-hero">
+    <div class="shell">
+      <span class="eyebrow">Documentation · v0.1.0</span>
+      <h1>Everything it does, and<br>everything it <em style="font-style:italic;color:var(--olive)">doesn't.</em></h1>
+      <p>The Jira Cloud tracker extension for OpenChamber: install, connect, permissions, SSO policy, daily use, troubleshooting, and the limits that are deliberately left open.</p>
+    </div>
+  </div>
+
+  <div class="shell docs-layout">
+    <nav class="toc" aria-label="On this page">
+      <div class="toc-title">On this page</div>
+      <a href="#requirements">Requirements</a>
+      <a href="#install">Install</a>
+      <a href="#connect">Connect a Jira site</a>
+      <a href="#permissions">Permissions and scopes</a>
+      <a href="#sso">SSO and organization policy</a>
+      <a href="#using">Using the extension</a>
+      <a href="#find-link" class="sub">Find and link an issue</a>
+      <a href="#read">Read an issue</a>
+      <a href="#states" class="sub">States and transitions</a>
+      <a href="#comments" class="sub">Comments</a>
+      <a href="#account" class="sub">The account card</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+      <a href="#security">Security and privacy</a>
+      <a href="#limits">Limits</a>
+      <a href="#development">Development</a>
+      <a href="#roadmap">Roadmap</a>
+    </nav>
+
+    <article class="doc">
+      <section id="requirements">
+        <h2><span class="h-num">01</span>Requirements</h2>
+        <ul>
+          <li><strong>OpenChamber 2.8.0 or newer.</strong> The manifest declares <code>engines.openchamber: "&gt;=2.8.0"</code>; the tracker contract and the SDK version it targets do not exist in older builds.</li>
+          <li><strong>A Jira Cloud site.</strong> A <code>*.atlassian.net</code> site or a custom domain that reports <code>deploymentType: "Cloud"</code> from <code>/rest/api/3/serverInfo</code>. Jira Server and Data Center are refused.</li>
+          <li><strong>A licensed Jira user</strong> who can browse the projects you want to see. The token acts as that user.</li>
+          <li><strong>Permission to install a local extension</strong> in OpenChamber (a folder or a ZIP).</li>
+        </ul>
+        <div class="callout info">
+          <span class="callout-title">No extra server</span>
+          <p>The extension is a local service started by OpenChamber. You do not run a daemon, create a database, or expose a port. It reaches Jira only through OpenChamber's outbound proxy.</p>
+        </div>
+      </section>
+
+      <section id="install">
+        <h2><span class="h-num">02</span>Install</h2>
+        <p>There are two tested paths: a ZIP from the latest release, or a folder from a checkout.</p>
+
+        <h3>From the ZIP (recommended)</h3>
+        <ol>
+          <li>Download <a href="https://github.com/pgquiles/openchamber-jira/releases/latest/download/openchamber-jira.zip">openchamber-jira.zip</a>.</li>
+          <li>Open <strong>Settings → Extensions</strong> in OpenChamber.</li>
+          <li>Paste the absolute path of the ZIP into <strong>Folder, ZIP, or URL</strong> and choose <strong>Add</strong>.</li>
+          <li>Approve the extension when OpenChamber asks. It asks to run a local service (the tracker service) and to connect to an external service (Jira).</li>
+        </ol>
+        <p>A ZIP is copied into OpenChamber's data folder. Updating means adding the new ZIP; OpenChamber treats it as a new version of the same extension.</p>
+
+        <h3>From a checkout</h3>
+        <pre><code>git clone https://github.com/pgquiles/openchamber-jira
+cd openchamber-jira
+npm install
+npm run verify   # typecheck, build the bundle, tests, guest check
+npm run zip      # optional: openchamber-jira.zip</code></pre>
+        <p>Add the absolute path of the <code>openchamber-jira</code> folder (or the ZIP) in <strong>Settings → Extensions</strong>. A folder install runs from the folder and picks up changes when you reload the extension.</p>
+
+        <h3>What gets installed</h3>
+        <table>
+          <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>package.json</code></td><td>Manifest: panel, service, tracker contribution, engines</td></tr>
+            <tr><td><code>service/main.js</code></td><td>The built runtime entry OpenChamber actually runs</td></tr>
+            <tr><td><code>icon.svg</code></td><td>The Jira mark in the rail and account card</td></tr>
+            <tr><td><code>README.md</code></td><td>The short version of this documentation</td></tr>
+          </tbody>
+        </table>
+        <p>There is no build step at install time and no runtime dependency to fetch. If you change <code>service/*.ts</code>, rebuild: OpenChamber does not run the TypeScript sources.</p>
+      </section>
+
+      <section id="connect">
+        <h2><span class="h-num">03</span>Connect a Jira site</h2>
+        <ol>
+          <li>Create an API token at <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener">id.atlassian.com → Security → Create and manage API tokens</a>. A classic token is simplest; a scoped token needs the scopes in <a href="#permissions">Permissions</a>.</li>
+          <li>In OpenChamber, open <strong>Settings → Integrations → Extension accounts</strong> and find the <strong>Jira</strong> card.</li>
+          <li>Fill in:
+            <ul>
+              <li><strong>Jira site</strong> — <code>https://your-company.atlassian.net</code>. No path, no trailing slash. A custom domain is fine if it serves the Jira REST API.</li>
+              <li><strong>Username</strong> — your Atlassian account email. OpenChamber labels this field neutrally for Basic auth; Jira calls it the user name.</li>
+              <li><strong>Token</strong> — the API token from step 1.</li>
+            </ul>
+          </li>
+          <li>Choose <strong>Connect</strong>.</li>
+        </ol>
+        <p>The extension checks <code>/rest/api/3/serverInfo</code> first and refuses non-Cloud deployments, then identifies the account through <code>/rest/api/3/myself</code>. A private site that redirects an unauthenticated request to its sign-in page is still recognized as Jira Cloud.</p>
+        <p>When the card says <strong>Connected</strong>, you can turn on <strong>Project mapping</strong> and <strong>Session comments</strong> if you want those OpenChamber features.</p>
+        <div class="callout">
+          <span class="callout-title">The token is stored by OpenChamber</span>
+          <p>The extension's service never receives the token. OpenChamber adds the <code>Authorization: Basic …</code> header in its outbound proxy and pins requests to the site you entered.</p>
+        </div>
+        <h3>If the connection fails</h3>
+        <table>
+          <thead><tr><th>Symptom</th><th>What it usually means</th></tr></thead>
+          <tbody>
+            <tr><td>401</td><td>The token is wrong, expired, revoked, or blocked by an organization policy. Create a new token and reconnect.</td></tr>
+            <tr><td>403</td><td>The account lacks a needed scope (scoped token) or Jira denied the call. Check scopes and site access.</td></tr>
+            <tr><td>“Only Jira Cloud is supported”</td><td>The URL is Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
+            <tr><td>Timeout or network error</td><td>OpenChamber's proxy could not reach the site. Check the URL, VPN, and proxy settings.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="permissions">
+        <h2><span class="h-num">04</span>Permissions and scopes</h2>
+        <p>The token acts as your Jira user. OpenChamber can never show an issue that user cannot see in Jira.</p>
+        <table>
+          <thead><tr><th>Feature</th><th>Jira permission</th></tr></thead>
+          <tbody>
+            <tr><td>Find issues, read details, projects, and statuses</td><td>Browse projects</td></tr>
+            <tr><td>Change an issue's state</td><td>Transition issues</td></tr>
+            <tr><td>Post session comments</td><td>Add comments</td></tr>
+          </tbody>
+        </table>
+        <h3>Scoped API tokens</h3>
+        <p>If your organization requires scoped tokens, grant:</p>
+        <ul>
+          <li><code>read:jira-work</code> — search, issues, projects, statuses</li>
+          <li><code>write:jira-work</code> — transitions and comments</li>
+          <li><code>read:jira-user</code> — identifying the account with <code>/myself</code></li>
+        </ul>
+        <p>A classic token works too, with the user's full Jira access. The extension does not ask for Atlassian administration scopes and cannot read users it does not need.</p>
+      </section>
+
+      <section id="sso">
+        <h2><span class="h-num">05</span>SSO and organization policy</h2>
+        <p>This extension uses HTTP Basic authentication: your Atlassian account email plus an API token. <strong>SSO does not block this.</strong> Atlassian API tokens authenticate even when the organization enforces SAML single sign-on or two-step verification, and Atlassian does not ask for an extra identity check when an SSO user creates a token.</p>
+        <p>What an organization can still change:</p>
+        <ul>
+          <li><strong>API token policy.</strong> An organization admin can block members from creating or using user API tokens, or cap their lifetime, through an Atlassian Guard authentication policy. When that is on, Jira answers 401/403 and the extension cannot override it. The account needs an exception, a service account, or OAuth.</li>
+          <li><strong>Expiry and revocation.</strong> New tokens expire after one year by default, and admins can revoke them earlier. Reconnect with a fresh token when Jira starts answering 401.</li>
+          <li><strong>Scopes.</strong> A scoped token needs <code>read:jira-work</code>, <code>write:jira-work</code>, and <code>read:jira-user</code>. A classic token works too, with the user's full access.</li>
+          <li><strong>Product access.</strong> The account must still be a licensed Jira user with permission to browse the projects.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-title">Before a company rollout</span>
+          <p>Atlassian's current guidance discourages integrations that collect and store personal API tokens. Check whether your organization blocks them. If it does, use an organization-approved service account as the interim path; OAuth 2.0 3LO is the durable replacement.</p>
+        </div>
+        <h3>Why OAuth is not a one-line change</h3>
+        <p>Jira's 3LO access tokens are sent to <code>https://api.atlassian.com/ex/jira/{cloudId}</code>, not directly to the site origin. OpenChamber's tracker host pins outbound proxy requests to the instance origin, and the extension also needs the cloud id from <code>/oauth/token/accessible-resources</code>. Supporting OAuth therefore needs an upstream way to declare an API origin (or resolve the cloud id) in addition to the manifest's <code>auth.oauth</code> block. It is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/1" target="_blank" rel="noopener">issue #1</a>.</p>
+        <h3>What a service account changes</h3>
+        <p>A service account is a normal Jira user with its own token and the permissions above. It survives employee turnover, can be scoped to the projects that matter, and is easier to justify to an organization than a personal token. The trade-off is that comments and changes appear as the service account, not as the person who made them. Decide that with your team before rolling it out.</p>
+      </section>
+
+      <section id="using">
+        <h2><span class="h-num">06</span>Using the extension</h2>
+        <p>Jira issues appear wherever OpenChamber expects a tracker: the <span class="kbd">@</span> reference picker, composer chips, linked items of a session, live states, and the account card.</p>
+      </section>
+
+      <section id="find-link">
+        <h2><span class="h-num">07</span>Find and link an issue</h2>
+        <p>Type <span class="kbd">@</span> in the composer and choose Jira, or open the reference picker. The default view is <strong>open issues assigned to you</strong>, newest first. Search matches issue keys and summaries.</p>
+        <table>
+          <thead><tr><th>Filter</th><th>Behaviour</th></tr></thead>
+          <tbody>
+            <tr><td>People · Assigned to me</td><td><code>assignee = currentUser()</code></td></tr>
+            <tr><td>People · Created by me</td><td><code>reporter = currentUser()</code></td></tr>
+            <tr><td>People · Everyone</td><td>No people clause; still limited by project permissions</td></tr>
+            <tr><td>State</td><td><code>open</code>, <code>all</code>, <code>todo</code>, <code>in-progress</code>, <code>done</code> mapped to Jira status categories</td></tr>
+            <tr><td>Priority</td><td>The site's own priority names; <code>none</code> means an empty priority field</td></tr>
+            <tr><td>Project</td><td>Projects act as containers, keyed by project key so the id works in JQL</td></tr>
+          </tbody>
+        </table>
+        <p>The picker reads up to 100 issues per page. More pages are available through Jira's next page token. The priority list is cached per site for five minutes.</p>
+        <p>Linking an issue adds it to the session's linked items. It does not move the issue, assign it, or write anything to Jira.</p>
+      </section>
+
+      <section id="read">
+        <h2><span class="h-num">08</span>Read an issue</h2>
+        <p>The issue panel shows the summary, status, assignee, priority, project, and labels, plus:</p>
+        <ul>
+          <li><strong>Description</strong> — converted from Atlassian Document Format to Markdown. Paragraphs, headings, lists, code blocks, tables, links, mentions, and inline cards are handled.</li>
+          <li><strong>Comments</strong> — up to 100, with the newest kept if the response budget is exceeded. When even those do not fit, the oldest comments are dropped.</li>
+          <li><strong>Parent and children</strong> — native sub-tasks and parent, team-managed epic children, and company-managed Epic Link children. The Epic Link field is discovered by its custom-field schema, so localized field names still work.</li>
+          <li><strong>Done / total</strong> — a count for the child issues Jira returns, with a marker when Jira truncates the list.</li>
+        </ul>
+      </section>
+
+      <section id="states">
+        <h2><span class="h-num">09</span>States and transitions</h2>
+        <p>OpenChamber's tracker contract uses four states. Jira reports a status category; the extension maps it like this:</p>
+        <table>
+          <thead><tr><th>Jira status category</th><th>OpenChamber state</th></tr></thead>
+          <tbody>
+            <tr><td><code>new</code></td><td><code>todo</code></td></tr>
+            <tr><td><code>indeterminate</code></td><td><code>in-progress</code></td></tr>
+            <tr><td><code>done</code></td><td><code>done</code></td></tr>
+            <tr><td><code>canceled</code> or <code>duplicate</code> status name</td><td><code>done</code> — Jira has no native canceled category</td></tr>
+            <tr><td>Missing or unknown</td><td><code>null</code> — never guessed</td></tr>
+          </tbody>
+        </table>
+        <p>To change state, the extension reads the issue's available transitions and picks the one whose destination is the status you chose. It does not invent a transition or fall back to a different status.</p>
+        <div class="callout warn">
+          <span class="callout-title">Workflow screens</span>
+          <p>Some transitions require a screen with fields — resolution, a comment, a custom field. The tracker contract sends only the destination, so the extension cannot complete that step. Jira's error is shown instead of guessing values. Finish the transition in Jira; the deadline for a richer flow is <a href="https://github.com/pgquiles/openchamber-jira/issues/13" target="_blank" rel="noopener">issue #13</a>.</p>
+        </div>
+      </section>
+
+      <section id="comments">
+        <h2><span class="h-num">10</span>Comments</h2>
+        <p>Session comments are posted as valid Atlassian Document Format, with the session link kept as a link mark. You need the <strong>Add comments</strong> permission on the issue's project.</p>
+        <p>This is the only write besides a state change. The extension does not edit descriptions, delete comments, attach files, or change assignees.</p>
+      </section>
+
+      <section id="account">
+        <h2><span class="h-num">11</span>The account card</h2>
+        <p><strong>Settings → Integrations → Extension accounts</strong> holds the connection. The connected card shows the Jira account and site, with <strong>Connect</strong> / <strong>Disconnect</strong>, and exposes the optional OpenChamber settings:</p>
+        <ul>
+          <li><strong>Project mapping</strong> — choose a default Jira project and how OpenChamber containers map to Jira projects.</li>
+          <li><strong>Session comments</strong> — allow posting a session summary as a Jira comment.</li>
+        </ul>
+      </section>
+
+      <section id="troubleshooting">
+        <h2><span class="h-num">12</span>Troubleshooting</h2>
+        <table>
+          <thead><tr><th>Symptom</th><th>Likely cause and fix</th></tr></thead>
+          <tbody>
+            <tr><td>401 after connecting</td><td>Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect.</td></tr>
+            <tr><td>403 on connect</td><td>The account lacks <code>read:jira-user</code> (scoped token), or Jira denied the call. Check scopes and site permissions.</td></tr>
+            <tr><td>Empty picker</td><td>The default view is issues <strong>assigned to you</strong>. Check the people filter, project access, and that the Jira account is the one you expect.</td></tr>
+            <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Everyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
+            <tr><td>429</td><td>Jira rate-limited the site. Wait for the <code>Retry-After</code> interval; the extension surfaces the error rather than retrying silently.</td></tr>
+            <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
+            <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira (see <a href="#states">States</a>).</td></tr>
+            <tr><td>Comments look short</td><td>Only the newest comments fit the response budget; the oldest were left out. Read the full thread in Jira.</td></tr>
+            <tr><td>The extension does not appear in Settings</td><td>Check that the manifest was added (folder or ZIP) and that the local service was allowed. OpenChamber must be 2.8.0 or newer.</td></tr>
+          </tbody>
+        </table>
+        <h3>Collecting details for a report</h3>
+        <p>Open an issue with the OpenChamber version, the extension version, the Jira deployment type (Cloud), the failing action, the HTTP status, and Jira's error text. Do not paste an API token. Redact site names and issue keys if they are sensitive.</p>
+      </section>
+
+      <section id="security">
+        <h2><span class="h-num">13</span>Security and privacy</h2>
+        <ul>
+          <li><strong>Token handling.</strong> OpenChamber stores the API token and adds the authorization header in its outbound proxy. The extension service receives request handles, not the token.</li>
+          <li><strong>Network scope.</strong> Requests go only to the Jira site you entered, through the proxy. The extension makes no analytics, telemetry, or third-party calls.</li>
+          <li><strong>Least privilege.</strong> Reads are GETs. The only writes are the state transition and the session comment you explicitly request.</li>
+          <li><strong>Visibility.</strong> Everything Jira returns is filtered by the token's permissions. The extension has no separate cache or database.</li>
+          <li><strong>Source.</strong> The extension is MIT licensed and the service is a single readable bundle built from <code>service/*.ts</code>. You can audit it before installing.</li>
+        </ul>
+        <div class="callout">
+          <span class="callout-title">A personal token is still personal</span>
+          <p>A user API token can read everything its owner can read. Treat it like a password: do not share it, do not commit it, and revoke it when it is no longer needed.</p>
+        </div>
+      </section>
+
+      <section id="limits">
+        <h2><span class="h-num">14</span>Limits</h2>
+        <table>
+          <thead><tr><th>Area</th><th>Current behaviour</th><th>Tracking</th></tr></thead>
+          <tbody>
+            <tr><td>Deployment</td><td>Jira Cloud only; Server and Data Center are refused.</td><td>—</td></tr>
+            <tr><td>Authoring</td><td>No create, edit, or delete; no assignee or priority changes.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a></td></tr>
+            <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/13" target="_blank" rel="noopener">#13</a></td></tr>
+            <tr><td>Rate limits</td><td>429 is shown, not retried; no <code>Retry-After</code> wait.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/4" target="_blank" rel="noopener">#4</a></td></tr>
+            <tr><td>Rich content</td><td>Images and attachments omitted; panels and expandos simplified.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/5" target="_blank" rel="noopener">#5</a></td></tr>
+            <tr><td>Custom fields</td><td>Sprint, story points, and due date are not in the preview.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/6" target="_blank" rel="noopener">#6</a></td></tr>
+            <tr><td>Containers</td><td>Projects only; no boards or sprints.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/7" target="_blank" rel="noopener">#7</a></td></tr>
+            <tr><td>Filters</td><td>Fixed people/state/priority filters; no saved filters or raw JQL.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/8" target="_blank" rel="noopener">#8</a></td></tr>
+            <tr><td>Accounts</td><td>One Jira site per OpenChamber.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/9" target="_blank" rel="noopener">#9</a></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="development">
+        <h2><span class="h-num">15</span>Development</h2>
+        <pre><code>npm install
+npm run typecheck   # tsc
+npm test            # rebuild the bundle, then bun test
+npm run build       # bundle service/main.ts → service/main.js
+npm run check       # openchamber-guest-check .
+npm run verify      # all of the above
+npm run zip         # openchamber-jira.zip</code></pre>
+        <table>
+          <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>package.json</code></td><td>Extension manifest and scripts</td></tr>
+            <tr><td><code>service/main.ts</code></td><td>Tracker service: handlers, Jira calls, HTTP server</td></tr>
+            <tr><td><code>service/jira.ts</code></td><td>Status/priority mapping, JQL, key checks, Epic Link helpers</td></tr>
+            <tr><td><code>service/adf.ts</code></td><td>Atlassian Document Format ↔ Markdown</td></tr>
+            <tr><td><code>service/main.js</code></td><td>Built bundle; the file OpenChamber runs</td></tr>
+            <tr><td><code>test/fixtures/fake-jira.ts</code></td><td>Jira Cloud stand-in for contract tests</td></tr>
+            <tr><td><code>test/service.test.ts</code></td><td>End-to-end tests through a proxy that enforces the contract</td></tr>
+            <tr><td><code>test/adf.test.ts</code>, <code>test/jira.test.ts</code></td><td>Unit tests</td></tr>
+          </tbody>
+        </table>
+        <p>The contract tests spawn the built <code>service/main.js</code>, send <code>POST /tracker</code> requests with the service bearer, and play OpenChamber's outbound proxy in front of a fake Jira. Read requests go through GET-only handles; writes use POST. That is how the tests catch a method the real host would refuse.</p>
+        <p>Rebuild after changing <code>service/*.ts</code>. The repository's <code>npm test</code> rebuilds first through the <code>pretest</code> script, so a stale bundle cannot make the tests pass.</p>
+        <h3>Contributing</h3>
+        <p>Open an issue before a substantial change so the contract implications are clear. Run <code>npm run verify</code> before a pull request, and include a test for the behaviour you changed. The site lives in <code>site/</code> and deploys to GitHub Pages on every push to <code>main</code> that touches it.</p>
+      </section>
+
+      <section id="roadmap">
+        <h2><span class="h-num">16</span>Roadmap</h2>
+        <p>The queue, in the order that unlocks the most:</p>
+        <ol>
+          <li><strong>OAuth 2.0 3LO</strong> for organizations that block personal API tokens (<a href="https://github.com/pgquiles/openchamber-jira/issues/1" target="_blank" rel="noopener">#1</a>).</li>
+          <li><strong>Create and edit issues</strong> — needs the tracker contract to grow (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>).</li>
+          <li><strong>Token health</strong> — expiry, scopes, and a clear needs-attention state (<a href="https://github.com/pgquiles/openchamber-jira/issues/3" target="_blank" rel="noopener">#3</a>).</li>
+          <li><strong>Live verification</strong> against a real Jira Cloud site, and real screenshots (<a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">#12</a>).</li>
+          <li><strong>CI and releases</strong> — typecheck, tests, guest check, ZIP artifacts, tags (<a href="https://github.com/pgquiles/openchamber-jira/issues/10" target="_blank" rel="noopener">#10</a>).</li>
+        </ol>
+        <p>See all <a href="https://github.com/pgquiles/openchamber-jira/issues" target="_blank" rel="noopener">open issues and labels</a> for the full list.</p>
+        <p class="next-prev"><a href="index.html">← Back to the overview</a><a href="index.html#install">Install →</a></p>
+      </section>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <img src="assets/icon.svg" alt="" width="26" height="26">
+        <div>
+          <strong>OpenChamber Jira</strong>
+          <p>A Jira Cloud tracker extension for the OpenChamber agentic development environment.</p>
+        </div>
+      </div>
+      <div class="footer-col"><b>Extension</b><a href="index.html#features">Features</a><a href="index.html#screenshots">Screenshots</a><a href="index.html#install">Install</a><a href="https://github.com/pgquiles/openchamber-jira/releases">Releases</a></div>
+      <div class="footer-col"><b>Documentation</b><a href="#install">Install</a><a href="#connect">Connect Jira</a><a href="#sso">SSO and policy</a><a href="#troubleshooting">Troubleshooting</a></div>
+      <div class="footer-col"><b>Project</b><a href="https://github.com/pgquiles/openchamber-jira">GitHub</a><a href="https://github.com/pgquiles/openchamber-jira/issues">Issues</a><a href="https://github.com/pgquiles/openchamber-jira/blob/main/README.md">README</a><a href="https://openchamber.dev">OpenChamber</a></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Pau Garcia Quiles · MIT licensed · Not affiliated with Atlassian.</span>
+      <span>Jira and the Jira logo are trademarks of Atlassian.</span>
+    </div>
+  </div>
+</footer>
+<script src="app.js" defer></script>
+</body>
+</html>
