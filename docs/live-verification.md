@@ -64,7 +64,8 @@ Capture these against the disposable site, with the test data only:
       and the state control.
 - [ ] Settings → Integrations → Extension accounts, with the test account card.
 
-Use a 1440×900 viewport at 2× scale (the four site images are 2880×1800).
+Use a 1440×900 viewport at 2× scale (the four site images are 2880×1800),
+with OpenChamber set to its **light** theme to match the site.
 Check every capture for tokens, email addresses, real project keys, and
 unrelated sessions before committing it.
 

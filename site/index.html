@@ -327,7 +327,7 @@
       <div>
         <span class="eyebrow">Install</span>
         <h2>Add Jira to your<br><em>OpenChamber.</em></h2>
-        <p>Download the ZIP and add it in <strong>Settings → Extensions</strong>, or add the repository folder from a checkout. Then connect a Jira Cloud site and link your first issue.</p>
+        <p>Download the ZIP and add it in <strong>Settings → Extensions</strong>, or clone the repository and add that folder. No build step either way. Then connect a Jira Cloud site and link your first issue.</p>
         <p style="font-size:13px;color:#9f927f">Requires OpenChamber 2.8.0 or newer · Jira Cloud · MIT licensed</p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/pgquiles/openchamber-jira/releases/latest/download/openchamber-jira.zip">Download the ZIP</a>
@@ -335,15 +335,13 @@
         </div>
       </div>
       <div class="code-wrap">
-        <button class="copy" type="button" data-copy="npm install && npm run verify && npm run zip">copy</button>
+        <button class="copy" type="button" data-copy="git clone https://github.com/pgquiles/openchamber-jira">copy</button>
         <span class="c-label">From a checkout</span>
-        <code><span class="cmt"># build the runtime bundle and archive</span>
-<span class="cmd">npm install</span>
-<span class="cmd">npm run verify</span>
-<span class="cmd">npm run zip</span>
+        <code><span class="cmd">git clone https://github.com/pgquiles/openchamber-jira</span>
 
 <span class="cmt"># then: Settings → Extensions</span>
-<span class="cmt"># add the folder or openchamber-jira.zip</span></code>
+<span class="cmt"># add that folder; no npm, no build</span>
+<span class="cmt"># OpenChamber runs service/main.js</span></code>
       </div>
     </div>
   </section>
