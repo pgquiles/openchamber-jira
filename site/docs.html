@@ -198,14 +198,20 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <tbody>
             <tr><td>Issues board</td><td><span class="kbd">Ctrl</span>+<span class="kbd">K</span>, then <span class="kbd">B</span> (<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span> on macOS), or the Command Palette → <strong>Show or hide issues and PRs</strong></td><td>Choose <strong>Jira</strong> in the source menu. The board opens on the repository tab when the project is a Git repository; the Jira tab is beside it. It remembers your choice.</td></tr>
             <tr><td>Composer</td><td>The <strong>+</strong> (Add attachment) button at the bottom-left of the composer → <strong>Link Jira Issue</strong></td><td>The Jira picker. The <span class="kbd">@</span> menu is OpenChamber's file mention picker; it does not list Jira issues.</td></tr>
-            <tr><td>Issue detail</td><td>Select an issue on the board, or open a Jira issue URL</td><td>Description, comments, parent and children, and transitions, in the Tracker panel or tab.</td></tr>
+            <tr><td>Issue detail</td><td>Select an issue on the board, or open a Jira issue URL</td><td>Description, comments (read-only), parent and children, and the state menu in the header, in the Tracker panel or tab.</td></tr>
             <tr><td>Settings</td><td><strong>Settings → Integrations → Extension accounts → Jira</strong></td><td>Connect the site, map projects, and enable session comments. It is not the issue list.</td></tr>
           </tbody>
         </table>
         <div class="callout info">
-          <span class="callout-title">If you expected a rail panel</span>
-          <p>The tracker contract has no extension-owned panel: OpenChamber renders the board tab, the picker, the detail view, and the account card from the tracker descriptor. A rail panel would duplicate that UI, so use the board and the composer action above.</p>
+          <span class="callout-title">What “rail panel” means (and why there is not one)</span>
+          <p>OpenChamber's right rail is the strip of panel icons beside the chat: Git, Files, Terminal, and any extension that ships a panel page. An extension gets one by pointing <code>contributes.panel.entry</code> at an HTML page. This extension's panel has no <code>entry</code>, so no Jira icon or Jira panel appears there. The tracker contract itself only draws the board tab, the composer picker, and the detail view.</p>
+          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. It would call the same tracker API, but it is not needed to list, read, or link issues, so it is not part of this extension.</p>
         </div>
+        <h3>Status and comments</h3>
+        <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's error (see <a href="#states">States and transitions</a>).</p>
+        <p>Comments are shown but not writable in OpenChamber 2.8.0. The tracker contract's <code>comments.create</code> is used only by the optional session comments, which post a summary when a session starts, finishes, or fails. A user comment box for tracker items is a host gap, tracked in <a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a>.</p>
+        <h3>Long project lists</h3>
+        <p>The board's project picker is also drawn by OpenChamber. With hundreds of Jira projects it has no scrollbar in 2.8.0, so projects after the first screenful cannot be reached. That is a host bug (<a href="https://github.com/openchamber/openchamber/issues/7642" target="_blank" rel="noopener">openchamber#7642</a>, tracked here as <a href="https://github.com/pgquiles/openchamber-jira/issues/15" target="_blank" rel="noopener">issue #15</a>). The composer's picker has its own project filter and search and is unaffected.</p>
       </section>
 
       <section id="find-link">
@@ -231,7 +237,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
         <p>The issue panel shows the summary, status, assignee, priority, project, and labels, plus:</p>
         <ul>
           <li><strong>Description</strong> — converted from Atlassian Document Format to Markdown. Paragraphs, headings, lists, code blocks, tables, links, mentions, and inline cards are handled.</li>
-          <li><strong>Comments</strong> — up to 100, with the newest kept if the response budget is exceeded. When even those do not fit, the oldest comments are dropped.</li>
+          <li><strong>Comments</strong> — up to 100, read-only in the detail view (see <a href="#comments">Comments</a>). With the newest kept if the response budget is exceeded; when even those do not fit, the oldest comments are dropped.</li>
           <li><strong>Parent and children</strong> — native sub-tasks and parent, team-managed epic children, and company-managed Epic Link children. The Epic Link field is discovered by its custom-field schema, so localized field names still work.</li>
           <li><strong>Done / total</strong> — a count for the child issues Jira returns, with a marker when Jira truncates the list.</li>
         </ul>
@@ -259,6 +265,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
 
       <section id="comments">
         <h2><span class="h-num">10</span>Comments</h2>
+        <p>The detail view shows an issue's comments read-only. OpenChamber 2.8.0 draws no comment composer for tracker items, so this extension cannot add one from the tracker contract. Tracked upstream in <a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a>.</p>
         <p>Session comments are posted as valid Atlassian Document Format, with the session link kept as a link mark. You need the <strong>Add comments</strong> permission on the issue's project.</p>
         <p>This is the only write besides a state change. The extension does not edit descriptions, delete comments, attach files, or change assignees.</p>
       </section>
@@ -281,6 +288,9 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
             <tr><td>403 on connect</td><td>The account lacks <code>read:jira-user</code> (scoped token), or Jira denied the call. Check scopes and site permissions.</td></tr>
             <tr><td>Empty picker</td><td>The default view is <strong>open issues you can see</strong>. Check the state filter, project access, and that the Jira account is the one you expect. Choose <strong>Assigned to me</strong> to narrow it.</td></tr>
             <tr><td>Connected, but no issues show</td><td>Open the issues board (<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span>) and choose the <strong>Jira</strong> tab, or use <strong>+ → Link Jira Issue</strong> in the composer. Settings shows only the connection and mapping. Typing <span class="kbd">@</span> opens file mentions, not Jira.</td></tr>
+            <tr><td>Can't reach a project in the board's project picker</td><td>OpenChamber draws that menu and it has no scrollbar on 2.8.0 when a site has many projects. This is a host bug, not the extension (<a href="https://github.com/openchamber/openchamber/issues/7642" target="_blank" rel="noopener">openchamber#7642</a>). Use the composer's <strong>+ → Link Jira Issue</strong> picker, which has a project filter and search.</td></tr>
+            <tr><td>No comment box in the issue detail</td><td>Read-only by host design in 2.8.0: comments are shown, but no tracker comment composer is drawn. <code>comments.create</code> is used only by <strong>Session comments</strong>. Tracked in <a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a>.</td></tr>
+            <tr><td>Can't change status in the composer picker's preview</td><td>Expected: the composer preview is for choosing an issue and is read-only. Open the issue from the issues board; its detail has the state menu.</td></tr>
             <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Anyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
             <tr><td>429</td><td>Jira rate-limited the site. Wait for the <code>Retry-After</code> interval; the extension surfaces the error rather than retrying silently.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
@@ -322,6 +332,8 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
             <tr><td>Containers</td><td>Projects only; no boards or sprints.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/7" target="_blank" rel="noopener">#7</a></td></tr>
             <tr><td>Filters</td><td>Fixed people/state/priority filters; no saved filters or raw JQL.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/8" target="_blank" rel="noopener">#8</a></td></tr>
             <tr><td>Accounts</td><td>One Jira site per OpenChamber.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/9" target="_blank" rel="noopener">#9</a></td></tr>
+            <tr><td>Issue comments</td><td>Read-only in the detail view; no comment composer for tracker items. The extension writes session comments only.</td><td><a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a></td></tr>
+            <tr><td>Board project picker</td><td>No scrollbar in 2.8.0 with hundreds of projects; projects past the first screenful are unreachable. Host-drawn menu, host bug.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/15" target="_blank" rel="noopener">#15</a>, <a href="https://github.com/openchamber/openchamber/issues/7642" target="_blank" rel="noopener">openchamber#7642</a></td></tr>
           </tbody>
         </table>
       </section>
