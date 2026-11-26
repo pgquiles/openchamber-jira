@@ -109,14 +109,19 @@ your own from the detail view is a host-side gap, tracked upstream in
 [openchamber#7641](https://github.com/openchamber/openchamber/issues/7641);
 the extension already implements the write.
 
-**No rail panel.** The right rail is OpenChamber's strip of panel icons beside
-the chat (Git, Files, Terminal, and any extension with a panel page). This
-extension's `contributes.panel` has no `entry`, so it draws no rail icon and no
-Jira rail panel. The tracker contract provides the board tab, the composer
-picker, and the detail view; a rail panel would be an extra extension page (for
-example, "Assigned to me" with issue rows) calling the same tracker API. It is
-not needed to browse, read, or link issues, so it is not part of this
-extension.
+**No rail panel (proposed in #16).** The right rail is OpenChamber's strip of
+panel icons beside the chat (Git, Files, Terminal, and any extension with a
+panel page). This extension's `contributes.panel` has no `entry`, so it draws
+no rail icon and no Jira rail panel. The tracker contract provides the board
+tab, the composer picker, and the detail view.
+
+A rail panel — "Assigned to me" with issue rows — would be an extra extension
+page. A guest page cannot read tracker items today: the tracker API is
+host-side, and the site credential and session handle never reach the
+extension. It needs an upstream guest tracker read path, or a host-drawn panel.
+The design and a sketch are tracked in
+[issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
+part of 0.1.0.
 
 The board's project picker is also drawn by OpenChamber. On a site with
 hundreds of projects it currently has no scrollbar, so projects past the first
