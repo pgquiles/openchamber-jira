@@ -250,10 +250,13 @@ manifest change for Jira.
   error names the reset time. Duplicate reads are also coalesced by
   OpenChamber's read cache.
 - The extension does not create, edit, or delete issues, and does not upload
-  attachments. Inline media and attachments in a description appear as links to
-  Jira's attachment endpoint; media that is not an attachment opens only in
-  Jira. A panel or expando keeps its tone or title, and an ADF node the
-  converter does not know appears as `[nodeType]` rather than disappearing.
+  attachments. Creating and editing need the tracker contract to grow, tracked
+  as [#2](https://github.com/pgquiles/openchamber-jira/issues/2) and upstream
+  [openchamber#7647](https://github.com/openchamber/openchamber/issues/7647).
+  Inline media and attachments in a description appear as links to Jira's
+  attachment endpoint; media that is not an attachment opens only in Jira. A
+  panel or expando keeps its tone or title, and an ADF node the converter does
+  not know appears as `[nodeType]` rather than disappearing.
 - Project mapping and session comments are optional OpenChamber features; turn
   them on from the Jira account card after connecting.
 - Several accounts can be connected to the same Jira site and switched from the
@@ -274,7 +277,8 @@ Ordered by what unlocks the most:
    description edits
    ([#2](https://github.com/pgquiles/openchamber-jira/issues/2)). OpenChamber's
    tracker contract currently exposes state changes and comments only, so this
-   starts upstream.
+   starts upstream in
+   [openchamber#7647](https://github.com/openchamber/openchamber/issues/7647).
 3. **Token health** — expiry, missing scopes, and a specific needs-attention
    state ([#3](https://github.com/pgquiles/openchamber-jira/issues/3)).
 4. **Jira rail panel** — assigned issues, filters, and one selected issue in
@@ -290,7 +294,9 @@ Ordered by what unlocks the most:
    ([#9](https://github.com/pgquiles/openchamber-jira/issues/9),
    [openchamber#7653](https://github.com/openchamber/openchamber/issues/7653)).
 7. **Live verification and real screenshots** against a disposable Jira Cloud
-   site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)).
+   site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)). The
+   repeatable checklist is in
+   [`docs/live-verification.md`](docs/live-verification.md).
 
 The website lives in `site/` and deploys to GitHub Pages from `main` through
 `.github/workflows/pages.yml`. The extension has its own CI: every pull request
