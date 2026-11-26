@@ -62,6 +62,24 @@ The extension checks `/rest/api/3/serverInfo` first, then identifies the account
 through `/rest/api/3/myself`. A private site that redirects an unauthenticated
 request to its sign-in page is still recognized as Jira Cloud.
 
+### More than one account on the same site
+
+The manifest declares `multipleAccounts`, so once the first account is connected
+the card offers **Add account**. The new credential is verified against the same
+site and becomes the active account; the board's account picker and the card
+switch between them. Each account keeps its own token and permissions, which
+suits a shared workstation or a personal account plus a service account.
+
+A second **site** is not possible in OpenChamber 2.8.0. The host stores one
+instance per tracker and, once an account exists, neither asks for a site nor
+accepts a different one. **Add account** therefore checks the credential against
+the site already connected: a user who is not a member there gets 401, and a
+user who is a member gets an account on the wrong site. This needs the host to
+keep an instance per account
+([openchamber#7653](https://github.com/openchamber/openchamber/issues/7653)),
+tracked as [#9](https://github.com/pgquiles/openchamber-jira/issues/9). To move
+to another site, disconnect every account; the site field comes back.
+
 ### Jira permissions
 
 The token acts as your Jira user. For the features below, your account needs:
@@ -86,7 +104,7 @@ board**, and the picker is in the **composer**.
 | Issues board | `Ctrl+K` then `B` (`Cmd+K` then `B` on macOS), or the Command Palette → **Show or hide issues and PRs** | Choose **Jira** in the source menu at the top. The board opens on the repository tab when the project is a Git repository; the Jira tab is beside it. It remembers the tab you chose. |
 | Composer | Click the **+** (Add attachment) button at the bottom-left of the composer → **Link Jira Issue** | The Jira picker: search, people, state, priority, and project filters. The `@` menu is OpenChamber's file mention picker; it does not list Jira issues. |
 | Issue detail | Select an issue on the board, or open a `https://your-site.atlassian.net/browse/KEY-123` link | Description, comments, parent and children, and the available state changes, in the Tracker panel or tab. |
-| Settings | **Settings → Integrations → Extension accounts → Jira** | Connect or disconnect the site, choose project mapping, and turn session comments on or off. It is not the issue list. |
+| Settings | **Settings → Integrations → Extension accounts → Jira** | Connect or disconnect an account, add another account on the same site, choose project mapping, and turn session comments on or off. It is not the issue list. |
 
 The Jira tab and the composer action appear only while the account is
 connected. If the board is already open, choose **Jira** from its source menu.
@@ -121,7 +139,7 @@ host-side, and the site credential and session handle never reach the
 extension. It needs an upstream guest tracker read path, or a host-drawn panel.
 The design and a sketch are tracked in
 [issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
-part of 0.2.0.
+part of 0.3.0.
 
 The board's project picker is also drawn by OpenChamber. On a site with
 hundreds of projects it currently has no scrollbar, so projects past the first
@@ -237,6 +255,10 @@ manifest change for Jira.
   converter does not know appears as `[nodeType]` rather than disappearing.
 - Project mapping and session comments are optional OpenChamber features; turn
   them on from the Jira account card after connecting.
+- Several accounts can be connected to the same Jira site and switched from the
+  board or the account card. Several **sites** cannot: OpenChamber 2.8.0 stores
+  one instance per tracker, so the site field disappears after the first account
+  ([openchamber#7653](https://github.com/openchamber/openchamber/issues/7653)).
 
 ## Roadmap
 
@@ -262,10 +284,11 @@ Ordered by what unlocks the most:
 5. **More Jira fields**: surface sprint, story points, due date, and
    components where the tracker contract allows
    ([#6](https://github.com/pgquiles/openchamber-jira/issues/6)).
-6. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
-   contractors and shared workstations
-   ([#9](https://github.com/pgquiles/openchamber-jira/issues/9)).
-8. **Live verification and real screenshots** against a disposable Jira Cloud
+6. **Several Jira sites per OpenChamber** — several accounts on one site work
+   now; a second site needs the host to store an instance per account
+   ([#9](https://github.com/pgquiles/openchamber-jira/issues/9),
+   [openchamber#7653](https://github.com/openchamber/openchamber/issues/7653)).
+7. **Live verification and real screenshots** against a disposable Jira Cloud
    site ([#12](https://github.com/pgquiles/openchamber-jira/issues/12)).
 
 The website lives in `site/` and deploys to GitHub Pages from `main` through
