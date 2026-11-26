@@ -21,16 +21,15 @@ and Data Center are refused.
 
 1. Download `openchamber-jira.zip` from the
    [latest release](https://github.com/pgquiles/openchamber-jira/releases/latest),
-   or build it from a checkout (development machines only):
+   or clone the repository and use that folder:
 
    ```bash
-   npm install
-   npm run verify
-   npm run zip
+   git clone https://github.com/pgquiles/openchamber-jira
    ```
 
-   `npm run verify` type-checks, rebuilds `service/main.js`, runs the tests,
-   and runs `openchamber-guest-check`.
+   A checkout needs no build: OpenChamber runs the committed
+   `service/main.js`. The npm scripts are for development only; see
+   [Development](#development) to run the tests or rebuild the bundle.
 
 2. Open **Settings → Extensions** in OpenChamber.
 

@@ -97,12 +97,9 @@
         <p>A ZIP is copied into OpenChamber's data folder. Updating means adding the new ZIP; OpenChamber treats it as a new version of the same extension.</p>
 
         <h3>From a checkout</h3>
-        <pre><code>git clone https://github.com/pgquiles/openchamber-jira
-cd openchamber-jira
-npm install
-npm run verify   # typecheck, build the bundle, tests, guest check
-npm run zip      # optional: openchamber-jira.zip</code></pre>
-        <p>Add the absolute path of the <code>openchamber-jira</code> folder (or the ZIP) in <strong>Settings → Extensions</strong>. A folder install runs from the folder and picks up changes when you reload the extension.</p>
+        <pre><code>git clone https://github.com/pgquiles/openchamber-jira</code></pre>
+        <p>Add the absolute path of the <code>openchamber-jira</code> folder in <strong>Settings → Extensions</strong>, the same way as a ZIP. No build is needed: the repository ships the runtime entry <code>service/main.js</code>, and OpenChamber runs it as-is. A folder install picks up changes when you reload the extension.</p>
+        <p>The npm scripts are for <a href="#development">development</a>: running the tests, rebuilding after a change to <code>service/*.ts</code>, and packaging the release ZIP.</p>
 
         <h3>What gets installed</h3>
         <table>
