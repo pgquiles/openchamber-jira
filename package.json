@@ -1,0 +1,83 @@
+{
+  "name": "openchamber-jira",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Jira Cloud tracker for OpenChamber",
+  "license": "MIT",
+  "type": "module",
+  "openchamber": {
+    "apiVersion": 1,
+    "engines": {
+      "openchamber": ">=2.8.0"
+    },
+    "contributes": {
+      "panel": {
+        "id": "jira-tracker",
+        "name": "Jira",
+        "icon": "icon.svg"
+      },
+      "service": {
+        "entry": "service/main.js",
+        "runtime": "host",
+        "provides": [
+          "tracker"
+        ]
+      },
+      "tracker": {
+        "wire": 1,
+        "label": "Jira",
+        "instances": {
+          "kind": "user",
+          "label": "Jira site",
+          "placeholder": "https://your-company.atlassian.net"
+        },
+        "auth": {
+          "token": {
+            "header": "authorization",
+            "scheme": "basic",
+            "username": true
+          }
+        },
+        "capabilities": {
+          "stateUpdate": true,
+          "children": true,
+          "labels": true,
+          "priority": true,
+          "filters": {
+            "people": true,
+            "priority": true
+          },
+          "projectMapping": true,
+          "sessionComments": true
+        },
+        "stateFilters": [
+          "open",
+          "all",
+          "todo",
+          "in-progress",
+          "done"
+        ],
+        "identifier": "key-number",
+        "urls": {
+          "item": [
+            "/browse/{id}"
+          ]
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "npx --yes bun node_modules/@openchamber/sdk/scripts/bundle-guest.ts --node service/main.ts service/main.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "npx --yes bun test",
+    "check": "npx --yes bun node_modules/@openchamber/sdk/scripts/check-guest.ts .",
+    "verify": "npm run typecheck && npm run test && npm run check",
+    "zip": "rm -f openchamber-jira.zip && zip -r openchamber-jira.zip package.json README.md icon.svg service/main.js"
+  },
+  "devDependencies": {
+    "@openchamber/sdk": "2.8.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
