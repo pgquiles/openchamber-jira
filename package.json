@@ -67,17 +67,21 @@
     }
   },
   "scripts": {
-    "build": "npx --yes bun node_modules/@openchamber/sdk/scripts/bundle-guest.ts --node service/main.ts service/main.js",
+    "build": "bun node_modules/@openchamber/sdk/scripts/bundle-guest.ts --node service/main.ts service/main.js",
     "typecheck": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "npx --yes bun test",
-    "check": "npx --yes bun node_modules/@openchamber/sdk/scripts/check-guest.ts .",
+    "test": "bun test",
+    "check": "bun node_modules/@openchamber/sdk/scripts/check-guest.ts .",
     "verify": "npm run typecheck && npm run test && npm run check",
     "zip": "rm -f openchamber-jira.zip && zip -r openchamber-jira.zip package.json README.md icon.svg service/main.js"
   },
   "devDependencies": {
     "@openchamber/sdk": "2.8.0",
     "@types/node": "^22.10.0",
+    "bun": "1.4.5",
     "typescript": "^5.7.0"
+  },
+  "allowScripts": {
+    "bun@1.4.5": true
   }
 }
