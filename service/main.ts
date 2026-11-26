@@ -27,7 +27,7 @@ import {
 } from '@openchamber/sdk';
 
 import { adfToMarkdown, markdownToAdf } from './adf.ts';
-import { buildJql, epicChildrenJql, epicLinkFieldId, escapeJqlString, isEpicIssueType, isIssueKey, isProjectKey, mapPriorityName, mapStatusCategory } from './jira.ts';
+import { buildJql, epicChildrenJql, epicLinkFieldId, escapeJqlString, explainFieldErrors, failureCode, isCustomFieldId, isEpicIssueType, isIssueKey, isProjectKey, jiraFieldNames, mapPriorityName, mapStatusCategory } from './jira.ts';
 
 const port = Number(process.env.OPENCHAMBER_SERVICE_PORT);
 const serviceToken = process.env.OPENCHAMBER_SERVICE_TOKEN ?? '';
@@ -99,15 +99,25 @@ type Call = { instance: string; handle: string };
 
 class CallError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** OpenChamber keeps a non-2xx status only when the extension also sends a
+   * machine code, so every failure that should keep Jira's status carries one. */
+  readonly code: string | undefined;
+  /** The custom-field ids a Jira `errors` object named, for the display name. */
+  readonly fields: readonly string[];
+  constructor(message: string, status: number, details: { code?: string; fields?: readonly string[] } = {}) {
     super(message);
     this.status = status;
+    this.code = details.code;
+    this.fields = details.fields ?? [];
   }
 }
 
 const truncate = (value: string, max: number): string => (value.length <= max ? value : value.slice(0, max));
 
-const jiraMessage = (response: SourceControlOutboundResponse): string => {
+type JiraFailure = { detail: string; fields: string[] };
+
+const jiraFailure = (response: SourceControlOutboundResponse): JiraFailure => {
+  const fields: string[] = [];
   try {
     const parsed = JSON.parse(response.body) as { errorMessages?: unknown; errors?: unknown };
     const messages: string[] = [];
@@ -116,24 +126,31 @@ const jiraMessage = (response: SourceControlOutboundResponse): string => {
     }
     if (parsed.errors && typeof parsed.errors === 'object' && !Array.isArray(parsed.errors)) {
       for (const [field, value] of Object.entries(parsed.errors)) {
-        if (typeof value === 'string') messages.push(`${field}: ${value}`);
+        if (typeof value !== 'string') continue;
+        messages.push(`${field}: ${value}`);
+        if (isCustomFieldId(field)) fields.push(field);
       }
     }
-    if (messages.length > 0) return messages.join(' ');
+    if (messages.length > 0) return { detail: messages.join(' '), fields };
   } catch {
     // The status and the raw body say what they can.
   }
-  return response.body.trim().slice(0, 300);
+  return { detail: response.body.trim().slice(0, 300), fields };
 };
 
 const serverFailure = (response: SourceControlOutboundResponse): CallError => {
-  if (response.status === 401) return new CallError('Jira refused the credential (401).', 401);
-  const detail = jiraMessage(response);
+  if (response.status === 401) {
+    return new CallError('Jira refused the credential (401).', 401, { code: failureCode(401) });
+  }
+  const { detail, fields } = jiraFailure(response);
   const verb = response.status === 429 ? 'Jira rate-limited the request' : 'Jira answered';
   // A reset time the user can act on beats a bare status code.
   const wait = retryAfterMs(response.headers);
   const hint = wait === null ? '' : ` Try again in ${Math.ceil(wait / 1_000)} s.`;
-  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : '.'}${hint}`, response.status);
+  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : '.'}${hint}`, response.status, {
+    code: failureCode(response.status),
+    fields,
+  });
 };
 
 /** A header by name, whatever its case; the host relays lower-case names. */
@@ -205,7 +222,7 @@ const api = async <T,>(
     try {
       return JSON.parse(response.body) as T;
     } catch {
-      throw new CallError('Jira answered with something other than JSON.', 502);
+      throw new CallError('Jira answered with something other than JSON.', 502, { code: 'JIRA_MALFORMED' });
     }
   }
 };
@@ -502,12 +519,12 @@ const handlers: Handlers = {
   'auth.verify': async (call) => {
     const info = await api<{ deploymentType?: unknown }>(call, 'GET', '/rest/api/3/serverInfo');
     if (info && typeof info.deploymentType === 'string' && info.deploymentType !== 'Cloud') {
-      throw new CallError(`Only Jira Cloud is supported; ${call.instance} reports ${info.deploymentType}.`, 400);
+      throw new CallError(`Only Jira Cloud is supported; ${call.instance} reports ${info.deploymentType}.`, 400, { code: 'UNSUPPORTED_SITE' });
     }
 
     const me = await api<JiraPerson>(call, 'GET', '/rest/api/3/myself');
     const id = textOf(me.accountId);
-    if (!id) throw new CallError('Jira answered no account id for this credential.', 502);
+    if (!id) throw new CallError('Jira answered no account id for this credential.', 502, { code: 'JIRA_MALFORMED' });
 
     const login = textOf(me.emailAddress) ?? textOf(me.displayName);
     const account: TrackerProviderDataByMethod['auth.verify']['account'] = { id, login };
@@ -530,7 +547,7 @@ const handlers: Handlers = {
       try {
         return buildJql(filters, names);
       } catch (error) {
-        throw new CallError(error instanceof Error ? error.message : 'Jira filter is not valid.', 400);
+        throw new CallError(error instanceof Error ? error.message : 'Jira filter is not valid.', 400, { code: 'INVALID' });
       }
     };
 
@@ -573,7 +590,7 @@ const handlers: Handlers = {
     const transition = transitions.find((entry) => String(entry.to?.id ?? '') === input.stateId);
     const transitionId = transition ? textOf(transition.id) : null;
     if (!transitionId) {
-      throw new CallError(`Jira has no transition from this issue's current status to ${input.stateId}.`, 409);
+      throw new CallError(`Jira has no transition from this issue's current status to ${input.stateId}.`, 409, { code: 'NO_TRANSITION' });
     }
 
     await api(call, 'POST', `/rest/api/3/issue/${seg(input.id)}/transitions`, {
@@ -612,7 +629,7 @@ const handlers: Handlers = {
 
   'states.list': async (call, input) => {
     if (!isProjectKey(input.containerId)) {
-      throw new CallError(`"${input.containerId}" is not a Jira project key.`, 400);
+      throw new CallError(`"${input.containerId}" is not a Jira project key.`, 400, { code: 'INVALID' });
     }
     const answer = await api<JiraProjectStatuses>(
       call,
@@ -670,7 +687,7 @@ const handlers: Handlers = {
     try {
       body = markdownToAdf(input.body);
     } catch {
-      throw new CallError('The comment body is empty.', 400);
+      throw new CallError('The comment body is empty.', 400, { code: 'INVALID' });
     }
 
     const comment = await orNull(api<JiraComment>(
@@ -681,9 +698,35 @@ const handlers: Handlers = {
     ));
     if (!comment) return { comment: null };
     const id = comment.id === undefined ? null : String(comment.id);
-    if (!id) throw new CallError('Jira created the comment but answered no id.', 502);
+    if (!id) throw new CallError('Jira created the comment but answered no id.', 502, { code: 'JIRA_MALFORMED' });
     return { comment: { id: truncate(id, 1_024) } };
   },
+};
+
+const FIELD_NAME_TTL_MS = 5 * 60 * 1000;
+const fieldNameCache = new Map<string, { names: Map<string, string> | null; expiresAt: number }>();
+
+/**
+ * A site's field display names, read once and kept for a few minutes. A failed
+ * read is not fatal: the caller keeps the raw id. The read is forced through
+ * the same outbound handle the failing call already holds.
+ */
+const fieldNamesFor = async (call: Call): Promise<Map<string, string> | null> => {
+  const cached = fieldNameCache.get(call.instance);
+  if (cached && cached.expiresAt > Date.now()) return cached.names;
+  let names: Map<string, string> | null = null;
+  try {
+    names = jiraFieldNames(await api<unknown>(call, 'GET', '/rest/api/3/field'));
+  } catch {
+    names = null;
+  }
+  fieldNameCache.set(call.instance, {
+    names,
+    // A site that could not be read is worth retrying sooner than one that
+    // simply has no custom fields.
+    expiresAt: Date.now() + (names === null ? 60_000 : FIELD_NAME_TTL_MS),
+  });
+  return names;
 };
 
 const failureOf = (error: Error): TrackerProviderError => {
@@ -694,7 +737,8 @@ const failureOf = (error: Error): TrackerProviderError => {
     if (error.status >= 400 && error.status <= 599) failure.status = error.status;
     if (/^[A-Z_]{1,64}$/.test(error.code)) failure.code = error.code;
   } else if (error instanceof CallError) {
-    failure.status = error.status;
+    if (error.status >= 400 && error.status <= 599) failure.status = error.status;
+    if (error.code && /^[A-Z_]{1,64}$/.test(error.code)) failure.code = error.code;
   }
   return failure;
 };
@@ -709,7 +753,16 @@ const answer = async <M extends TrackerProviderMethod>(
     const data = await handlers[method](call, input as TrackerProviderInputs[M]);
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error: failureOf(error instanceof Error ? error : new Error(String(error))) };
+    let failure = error instanceof Error ? error : new Error(String(error));
+    if (failure instanceof CallError && failure.fields.length > 0) {
+      const names = await fieldNamesFor(call);
+      if (names) {
+        failure = new CallError(explainFieldErrors(failure.message, failure.fields, names), failure.status, {
+          code: failure.code,
+        });
+      }
+    }
+    return { ok: false, error: failureOf(failure) };
   }
 };
 

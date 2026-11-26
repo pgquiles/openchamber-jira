@@ -31,7 +31,7 @@ Record the environment once:
 | Site | `https://<test-site>.atlassian.net` |
 | Test project | |
 | OpenChamber version | 2.8.0 |
-| Extension version | 0.3.0 |
+| Extension version | 0.3.0 (full run); 0.3.1 (check 11 re-run) |
 | Date | |
 
 ## Checklist
@@ -83,28 +83,35 @@ that described the old previews.
 
 ## Last run
 
-2026-11-26, OpenChamber 2.8.0 with extension 0.3.0 (folder install) against a
-disposable Jira Cloud site. The test data was one team-managed software project
-and one company-managed project for the screen-gated transition. Full evidence
-is on [#12](https://github.com/pgquiles/openchamber-jira/issues/12); the four
+2026-11-26, OpenChamber 2.8.0 against a disposable Jira Cloud site (folder
+install). The test data was one team-managed software project and one
+company-managed project for the screen-gated transition. Full evidence is on
+[#12](https://github.com/pgquiles/openchamber-jira/issues/12); the four
 captures live in `site/assets/screenshots/`.
 
-- Checks 1–10 and 15 passed.
-- Check 11 passed with a caveat: Jira rejected the transition as expected, but
-  the message names the required field by its custom-field id
-  (`customfield_10046`) and the host reports HTTP 500 rather than Jira's 400.
-  Tracked in [#26](https://github.com/pgquiles/openchamber-jira/issues/26).
-- Check 12 passed with a caveat: the ADF comment posted once, a second start
-  was skipped as `already-posted`, and a non-public origin was skipped. The
-  session link itself pointed at a placeholder origin, because the local
+The 0.3.0 run recorded checks 1–15. After
+[#26](https://github.com/pgquiles/openchamber-jira/issues/26), the 0.3.1 build
+re-ran check 11:
+
+- Check 11 passed: the transition was refused with HTTP 400 and
+  `{"error":"Jira answered 400: Gate check (customfield_10046): Gate check is required.","code":"JIRA_REJECTED"}`.
+  The message names the field and keeps its id; the issue stayed In Progress.
+  The 0.3.0 run had returned HTTP 500 with the raw id.
+- Checks 1–10 and 15 passed (0.3.0).
+- Check 12 passed with a caveat (0.3.0): the ADF comment posted once, a second
+  start was skipped as `already-posted`, and a non-public origin was skipped.
+  The session link itself pointed at a placeholder origin, because the local
   deployment has no public URL.
-- Check 13 exposed a gap: a revoked token makes Jira answer the issue search
-  with an empty result, so the board goes empty while the account still reads
-  connected and valid. The needs-attention state is the upstream token-health
-  work in [#3](https://github.com/pgquiles/openchamber-jira/issues/3) and
+- Check 13 exposed a gap (0.3.0): a revoked token makes Jira answer the issue
+  search with an empty result, so the board goes empty while the account still
+  reads connected and valid. The needs-attention state is the upstream
+  token-health work in
+  [#3](https://github.com/pgquiles/openchamber-jira/issues/3) and
   [openchamber#7648](https://github.com/openchamber/openchamber/issues/7648).
-  Check 14 passed: reconnecting with a valid token restored the account and
-  the board without reinstalling anything.
+  The 0.3.1 failure mapping keeps a direct 401, but the empty search still
+  hides the revocation from the board.
+- Check 14 passed (0.3.0): reconnecting with a valid token restored the account
+  and the board without reinstalling anything.
 
 ## Cleanup
 
