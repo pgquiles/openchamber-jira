@@ -58,7 +58,8 @@ export type FakeJira = {
   email: string;
   requests: FakeJiraRequest[];
   issues: Map<string, FakeJiraIssue>;
-  failNext: (status: number, message: string) => void;
+  /** Refuse the next request, optionally with a Retry-After header. */
+  failNext: (status: number, message: string, headers?: Record<string, string>) => void;
   /** Refuse the next transition like a workflow screen that needs fields. */
   failNextTransition: (errors: Record<string, string>) => void;
   setPageSize: (size: number) => void;
@@ -349,7 +350,7 @@ const matchesJql = (issue: FakeJiraIssue, jql: string, accountId: string): boole
 export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com', deploymentType = 'Cloud', requireAuth = false } = {}): Promise<FakeJira> => new Promise((resolve, reject) => {
   const issues = new Map(createIssues().map((issue) => [issue.key, issue]));
   const requests: FakeJiraRequest[] = [];
-  const failures: Array<{ status: number; message: string }> = [];
+  const failures: Array<{ status: number; message: string; headers: Record<string, string> }> = [];
   let transitionFailure: Record<string, string> | null = null;
   let pageSize = 100;
   let nextComment = 0;
@@ -461,8 +462,8 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-    const send = (status: number, body: Json): void => {
-      res.writeHead(status, { 'Content-Type': 'application/json' });
+    const send = (status: number, body: Json, headers: Record<string, string> = {}): void => {
+      res.writeHead(status, { 'Content-Type': 'application/json', ...headers });
       res.end(JSON.stringify(body));
     };
 
@@ -477,7 +478,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
 
       const failure = failures.shift();
       if (failure) {
-        send(failure.status, jiraError(failure.status, failure.message).body);
+        send(failure.status, jiraError(failure.status, failure.message).body, failure.headers);
         return;
       }
 
@@ -671,7 +672,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       email,
       requests,
       issues,
-      failNext: (status, message) => { failures.push({ status, message }); },
+      failNext: (status, message, headers = {}) => { failures.push({ status, message, headers }); },
       failNextTransition: (errors) => { transitionFailure = errors; },
       setPageSize: (size) => { pageSize = Math.max(1, size); },
       close: () => new Promise((done) => { server.close(() => done()); }),

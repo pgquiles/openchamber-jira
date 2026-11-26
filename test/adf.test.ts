@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { adfToMarkdown, markdownToAdf } from '../service/adf.ts';
+import { ADF_NODE_CASES } from './fixtures/adf-nodes.ts';
 
 const doc = (...content: unknown[]) => ({ type: 'doc', version: 1, content });
 
@@ -135,6 +136,84 @@ describe('ADF to Markdown', () => {
     expect(adfToMarkdown(null)).toBe('');
     expect(adfToMarkdown({ type: 'paragraph', content: [text('no doc')] })).toBe('');
     expect(adfToMarkdown({ type: 'doc', version: 1, content: [] })).toBe('');
+  });
+});
+
+describe('every ADF node type', () => {
+  for (const nodeCase of ADF_NODE_CASES) {
+    test(`renders ${nodeCase.name}`, () => {
+      const value = nodeCase.inline ? doc(paragraph(nodeCase.node)) : doc(nodeCase.node);
+      const options = nodeCase.baseUrl === undefined ? {} : { baseUrl: nodeCase.baseUrl };
+      expect(adfToMarkdown(value, options)).toBe(nodeCase.markdown);
+    });
+  }
+});
+
+describe('malformed ADF', () => {
+  const TYPES = [
+    'doc', 'paragraph', 'text', 'hardBreak', 'mention', 'emoji', 'inlineCard', 'blockCard', 'embedCard',
+    'status', 'date', 'heading', 'codeBlock', 'blockquote', 'panel', 'expand', 'nestedExpand',
+    'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'table', 'tableRow', 'tableCell',
+    'media', 'mediaSingle', 'mediaGroup', 'caption', 'rule', 'mystery', 'mysteryBlock', '',
+  ] as const;
+
+  /** A deterministic generator, so a failure can be replayed from its seed. */
+  const randomDocument = (seed: number): unknown => {
+    let state = seed >>> 0;
+    const next = (): number => {
+      state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+      return state / 2 ** 32;
+    };
+    const pick = <T,>(items: readonly T[]): T => items[Math.floor(next() * items.length)] as T;
+    const value = (depth: number): unknown => {
+      const roll = next();
+      if (depth === 0 || roll < 0.3) return pick([null, true, false, 0, -1, 1.5, '', 'text', pick(TYPES)]);
+      if (roll < 0.55) return Array.from({ length: Math.floor(next() * 4) }, () => value(depth - 1));
+      const node: Record<string, unknown> = {};
+      if (next() < 0.85) node.type = pick(TYPES);
+      if (next() < 0.6) node.content = value(depth - 1);
+      if (next() < 0.5) {
+        node.attrs = {
+          level: pick([0, 1, 7, 'x', null]),
+          text: pick([42, 'Text', null]),
+          timestamp: pick([42, '1795683729000', null]),
+          url: pick([42, 'https://example.com/x', null]),
+          id: pick([1, 'abc', null]),
+          panelType: pick(['warning', 7, null]),
+          title: pick([[], 'T', null]),
+          alt: pick([{}, 'alt', null]),
+          order: pick([0, -1, 'x', null]),
+        };
+      }
+      if (next() < 0.4) node.text = pick([42, 'word', null]);
+      if (next() < 0.3) node.marks = pick([null, 'x', {}, [{ type: 'link', attrs: { href: 42 } }], [{ type: 'strong' }, null]]);
+      return node;
+    };
+    return value(4);
+  };
+
+  test('never throws on a document that is not ADF', () => {
+    for (let seed = 1; seed <= 500; seed += 1) {
+      const value = randomDocument(seed);
+      expect(() => adfToMarkdown(value)).not.toThrow();
+      expect(() => adfToMarkdown(value, { baseUrl: 'https://example.atlassian.net' })).not.toThrow();
+    }
+  });
+
+  test('never throws on a document with the right shape but broken parts', () => {
+    const broken = doc(
+      { type: 'paragraph', content: 'not an array' },
+      { type: 'heading', attrs: 'nope', content: [text('x')] },
+      { type: 'codeBlock', content: [{ type: 'text', text: 42 }] },
+      { type: 'table', content: [{ type: 'tableRow', content: null }, null] },
+      { type: 'mediaSingle', content: [{ type: 'media', attrs: null }] },
+      { type: 'panel', attrs: { panelType: 42 }, content: [] },
+      { type: 'mystery', content: null },
+      { type: 'mystery' },
+      null,
+      'text',
+    );
+    expect(() => adfToMarkdown(broken)).not.toThrow();
   });
 });
 
