@@ -141,13 +141,13 @@ The design and a sketch are tracked in
 [issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
 part of 0.3.0.
 
-The board's project picker is also drawn by OpenChamber. On a site with
-hundreds of projects it currently has no scrollbar, so projects past the first
-screenful cannot be reached; that is an OpenChamber bug
-([openchamber#7642](https://github.com/openchamber/openchamber/issues/7642)),
-tracked here as
-[issue #15](https://github.com/pgquiles/openchamber-jira/issues/15). The
-composer picker is unaffected and already has a project filter and search.
+The board's project picker is also drawn by OpenChamber. In 2.8.0 it has no
+scrollbar on a site with hundreds of projects, so projects past the first
+screenful cannot be reached. That is an OpenChamber bug, already fixed on
+`main` by [#7430](https://github.com/openchamber/openchamber/pull/7430); the
+fix ships in the first release after 2.8.0. Until then, use the composer
+picker, which has its own project filter and search. Tracked as
+[issue #15](https://github.com/pgquiles/openchamber-jira/issues/15).
 
 ## Authentication and SSO
 
@@ -186,7 +186,7 @@ manifest change for Jira.
 | 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
 | Empty picker | The default view is **open issues you can see**; check the state filter, project access, and that the Jira account is the one you expect. Choose **Assigned to me** to narrow it to your queue. |
 | Connected, but no issues show | Open the **issues board** (`Ctrl/Cmd+K` then `B`) and choose the **Jira** tab, or use **+ → Link Jira Issue** in the composer. Settings shows only the connection and mapping. Typing `@` opens file mentions, not Jira. |
-| Can't reach a project in the board's project picker | OpenChamber draws that menu and it has no scrollbar on 2.8.0 when a site has many projects. This is a host bug, not the extension; see [openchamber#7642](https://github.com/openchamber/openchamber/issues/7642). Use the composer's **+ → Link Jira Issue** picker, which has its own project filter and search. |
+| Can't reach a project in the board's project picker | OpenChamber 2.8.0 draws that menu without a scrollbar when a site has many projects. This is a host bug, not the extension; it is fixed on OpenChamber `main` by [#7430](https://github.com/openchamber/openchamber/pull/7430) and ships in the next release. On 2.8.0, use the composer's **+ → Link Jira Issue** picker, which has its own project filter and search. |
 | No comment box in the issue detail | Read-only by host design in 2.8.0: comments are shown, but no tracker comment composer is drawn. `comments.create` is used only by **Session comments**. Tracked upstream in [openchamber#7641](https://github.com/openchamber/openchamber/issues/7641). |
 | Can't change status in the composer picker's preview | Expected: that preview only selects and links. Open the issue from the **issues board**; its detail has the state menu. |
 | 429 | Jira rate-limited the site. The extension waits for `Retry-After` on reads (up to 3 attempts, 10 s total) and shows Jira's message with the reset time when it gives up. Writes are not retried. |
@@ -234,9 +234,10 @@ manifest change for Jira.
   only for session comments.
 - The board's project picker is drawn by OpenChamber and has no scrollbar on
   2.8.0 with long container lists. The extension returns the projects, but
-  cannot style that menu; the fix is upstream
-  ([openchamber#7642](https://github.com/openchamber/openchamber/issues/7642),
-  tracked as [#15](https://github.com/pgquiles/openchamber-jira/issues/15)).
+  cannot style that menu. Upstream fixed it on `main` in
+  [#7430](https://github.com/openchamber/openchamber/pull/7430); 2.8.0 is the
+  only affected release, tracked as
+  [#15](https://github.com/pgquiles/openchamber-jira/issues/15).
 - The picker reads up to 100 issues per page; more pages are available through
   Jira's next page token.
 - Transition screens that demand extra fields (resolution, comment, custom
