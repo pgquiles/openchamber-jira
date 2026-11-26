@@ -263,13 +263,13 @@
           <h2>What it does<br><em>not</em> do yet.</h2>
         </div>
         <div class="intro">
-          <p>These are deliberate limits, not surprises. Each one is an open issue with a reason and an acceptance test, and the documentation says the same thing the code does.</p>
+          <p>These are deliberate limits, not surprises. Each one has a reason, and where work remains it links to the issue that tracks it. The documentation says the same thing the code does.</p>
         </div>
       </div>
       <div class="limits">
         <div class="limit"><span class="lbl">Cloud only</span><p>Jira Server and Data Center answer <code>serverInfo</code> with a different deployment type and are refused.</p></div>
         <div class="limit"><span class="lbl">No authoring</span><p>It cannot create, edit, or delete issues. That needs the tracker contract to grow first (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>).</p></div>
-        <div class="limit"><span class="lbl">Transition screens</span><p>A workflow step that demands resolution or custom fields cannot be completed here; Jira's error is shown instead (<a href="https://github.com/pgquiles/openchamber-jira/issues/13" target="_blank" rel="noopener">#13</a>).</p></div>
+        <div class="limit"><span class="lbl">Transition screens</span><p>A workflow step that demands resolution or custom fields cannot be completed here. Jira's error names the missing fields, and the issue header opens Jira to finish the step.</p></div>
         <div class="limit"><span class="lbl">No retries</span><p>HTTP 429 is surfaced with Jira's message, not retried silently. <code>Retry-After</code> handling is planned (<a href="https://github.com/pgquiles/openchamber-jira/issues/4" target="_blank" rel="noopener">#4</a>).</p></div>
         <div class="limit"><span class="lbl">Attachments</span><p>Images and attachments are left out of the Markdown description; panels and expandos lose some structure (<a href="https://github.com/pgquiles/openchamber-jira/issues/5" target="_blank" rel="noopener">#5</a>).</p></div>
         <div class="limit"><span class="lbl">One site</span><p>One Jira site per OpenChamber today. Multiple accounts are planned (<a href="https://github.com/pgquiles/openchamber-jira/issues/9" target="_blank" rel="noopener">#9</a>).</p></div>
@@ -317,8 +317,8 @@
           <span class="r-labels"><span class="chip warn">testing</span><span class="chip info">website</span></span>
         </a></li>
         <li><a href="https://github.com/pgquiles/openchamber-jira/issues/10" target="_blank" rel="noopener">
-          <span class="r-num">#10</span><span class="r-title">CI, releases, branch protection</span>
-          <span class="r-desc">Typecheck, tests, guest check, and a ZIP artifact on every change; a tagged release on request.</span>
+          <span class="r-num">#10</span><span class="r-title">CI, release automation, branch protection</span>
+          <span class="r-desc">The 0.1.0 ZIP is published; what remains is typecheck, tests, and guest check on every change, tag-driven releases, and a protected <code>main</code>.</span>
           <span class="r-labels"><span class="chip ok">ci</span></span>
         </a></li>
       </ul>
