@@ -153,7 +153,7 @@ const api = async <T,>(
   try {
     return JSON.parse(response.body) as T;
   } catch {
-    throw new CallError('Jira answered with something other than JSON.', 502);
+    throw new CallError('Jira answered with something other than JSON!', 502);
   }
 };
 
