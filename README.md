@@ -108,7 +108,7 @@ manifest change for Jira.
 | --- | --- |
 | 401 after connecting | Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect. |
 | 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
-| Empty picker | The default view is issues **assigned to you**; check the people filter, project access, and that the Jira account is the one you expect. |
+| Empty picker | The default view is **open issues you can see**; check the state filter, project access, and that the Jira account is the one you expect. Choose **Assigned to me** to narrow it to your queue. |
 | 429 | Jira rate-limited the site. Wait for the `Retry-After` interval; the extension surfaces the error rather than retrying silently. |
 | “Only Jira Cloud is supported” | The URL points at Jira Server or Data Center. |
 | A transition fails | The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira. |
@@ -116,13 +116,13 @@ manifest change for Jira.
 
 ## What it supports
 
-- **Listing and search** through JQL (`/rest/api/3/search/jql`), newest first.
+- **Listing and search** through JQL (`/rest/api/3/search/jql`), most recently updated first.
   The default is open issues assigned to the signed-in user; search matches
   summaries and issue keys.
 - **State filters** `open`, `all`, `todo`, `in-progress`, `done`, mapped to
   Jira status categories. `canceled` is not offered because Jira has no native
   canceled category; canceled statuses report as `done`.
-- **People filters** for issues assigned to you or reported by you.
+- **People filters** for issues assigned to you, created by you, or anyone you can see.
 - **Priority filters** using the site's own priority names. `none` means the
   priority field is empty. The priority list is cached per site for five
   minutes.

@@ -297,6 +297,7 @@ const matchesCondition = (issue: FakeJiraIssue, condition: string, accountId: st
   const project = condition.match(/^project = "((?:[^"\\]|\\.)*)"$/);
   if (project) return issue.projectKey.toLowerCase() === unescapeJql(project[1] ?? '').toLowerCase();
 
+  if (condition === 'project is not EMPTY') return true;
   if (condition === 'assignee = currentUser()') return issue.assigneeId === accountId;
   if (condition === 'reporter = currentUser()') return issue.creatorId === accountId;
   if (condition === 'priority is EMPTY') return issue.priorityId === null;
@@ -338,7 +339,7 @@ const matchesCondition = (issue: FakeJiraIssue, condition: string, accountId: st
 };
 
 const matchesJql = (issue: FakeJiraIssue, jql: string, accountId: string): boolean => {
-  const orderAt = jql.indexOf(' ORDER BY ');
+  const orderAt = jql.indexOf('ORDER BY ');
   const body = orderAt >= 0 ? jql.slice(0, orderAt) : jql;
   return splitJql(body).every((condition) => matchesCondition(issue, condition, accountId));
 };

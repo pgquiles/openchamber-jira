@@ -165,11 +165,12 @@ const stateCondition = (state: string): string | null => {
   }
 };
 
-const peopleCondition = (people: JiraListFilters['people']): string => {
+const peopleCondition = (people: JiraListFilters['people']): string | null => {
   switch (people) {
+    case 'any':
+      return null;
     case 'created':
       return 'reporter = currentUser()';
-    case 'any':
     case 'me':
     default:
       return 'assignee = currentUser()';
@@ -188,7 +189,8 @@ export const buildJql = (input: JiraListFilters, priorityNames: readonly string[
   const state = stateCondition(input.state);
   if (state) conditions.push(state);
 
-  conditions.push(peopleCondition(input.people));
+  const people = peopleCondition(input.people);
+  if (people) conditions.push(people);
 
   if (input.priority === 'none') {
     conditions.push('priority is EMPTY');
@@ -206,5 +208,9 @@ export const buildJql = (input: JiraListFilters, priorityNames: readonly string[
       : `summary ~ "${escaped}"`);
   }
 
-  return { jql: `${conditions.join(' AND ')} ORDER BY updated DESC`, matchesNothing: false };
+  // /search/jql refuses a bare ORDER BY as an unbounded query. Every issue
+  // belongs to a project, so this clause matches everything and keeps the
+  // request legal when no filter was chosen.
+  const where = conditions.length === 0 ? ['project is not EMPTY'] : conditions;
+  return { jql: `${where.join(' AND ')} ORDER BY updated DESC`, matchesNothing: false };
 };

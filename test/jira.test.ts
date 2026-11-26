@@ -66,26 +66,27 @@ describe('priority mapping', () => {
 });
 
 describe('JQL', () => {
-  test('defaults to the signed-in user’s active issues, newest first', () => {
+  test('defaults to active issues anyone owns, most recently updated first', () => {
     expect(buildJql(BASE, PRIORITIES)).toEqual({
       matchesNothing: false,
-      jql: 'statusCategory != Done AND assignee = currentUser() ORDER BY updated DESC',
+      jql: 'statusCategory != Done ORDER BY updated DESC',
     });
   });
 
   test('maps every declared state filter to a Jira status category', () => {
     expect(buildJql({ ...BASE, state: 'all' }, PRIORITIES).jql)
-      .toBe('assignee = currentUser() ORDER BY updated DESC');
+      .toBe('project is not EMPTY ORDER BY updated DESC');
     expect(buildJql({ ...BASE, state: 'todo' }, PRIORITIES).jql)
-      .toBe('statusCategory = "To Do" AND assignee = currentUser() ORDER BY updated DESC');
+      .toBe('statusCategory = "To Do" ORDER BY updated DESC');
     expect(buildJql({ ...BASE, state: 'in-progress' }, PRIORITIES).jql)
-      .toBe('statusCategory = "In Progress" AND assignee = currentUser() ORDER BY updated DESC');
+      .toBe('statusCategory = "In Progress" ORDER BY updated DESC');
     expect(buildJql({ ...BASE, state: 'done' }, PRIORITIES).jql)
-      .toBe('statusCategory = Done AND assignee = currentUser() ORDER BY updated DESC');
+      .toBe('statusCategory = Done ORDER BY updated DESC');
   });
 
-  test('scopes both any and me to the signed-in assignee, and created to the reporter', () => {
-    expect(buildJql({ ...BASE, people: 'any' }, PRIORITIES).jql).toContain('assignee = currentUser()');
+  test('leaves anyone unrestricted, scopes me to the assignee, and created to the reporter', () => {
+    expect(buildJql({ ...BASE, people: 'any' }, PRIORITIES).jql)
+      .toBe('statusCategory != Done ORDER BY updated DESC');
     expect(buildJql({ ...BASE, people: 'me' }, PRIORITIES).jql).toContain('assignee = currentUser()');
     expect(buildJql({ ...BASE, people: 'created' }, PRIORITIES).jql).toContain('reporter = currentUser()');
   });
@@ -101,7 +102,7 @@ describe('JQL', () => {
 
   test('searches a key-shaped query by key or summary', () => {
     expect(buildJql({ ...BASE, query: 'PROJ-42' }, PRIORITIES).jql)
-      .toBe('statusCategory != Done AND assignee = currentUser() AND (key = "PROJ-42" OR summary ~ "PROJ-42") ORDER BY updated DESC');
+      .toBe('statusCategory != Done AND (key = "PROJ-42" OR summary ~ "PROJ-42") ORDER BY updated DESC');
   });
 
   test('treats a bare word as a summary search even if it has digits', () => {
@@ -118,7 +119,7 @@ describe('JQL', () => {
 
   test('filters on an empty priority', () => {
     expect(buildJql({ ...BASE, priority: 'none' }, PRIORITIES).jql)
-      .toBe('statusCategory != Done AND assignee = currentUser() AND priority is EMPTY ORDER BY updated DESC');
+      .toBe('statusCategory != Done AND priority is EMPTY ORDER BY updated DESC');
   });
 
   test('escapes quotes and backslashes in a search string', () => {

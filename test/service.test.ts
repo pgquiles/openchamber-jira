@@ -266,12 +266,13 @@ describe('account', () => {
 });
 
 describe('items.list', () => {
-  test('lists the signed-in user’s active issues, newest first', async () => {
+  test('lists active issues anyone owns, most recently updated first', async () => {
     const page = await read('items.list', LIST);
-    expect(page.items.map((item) => item.identifier)).toEqual(['PROJ-5', 'OPS-1', 'PROJ-1']);
+    expect(page.items.map((item) => item.identifier))
+      .toEqual(['PROJ-11', 'PROJ-10', 'PROJ-5', 'OPS-1', 'PROJ-1', 'PROJ-2']);
     expect(page).toMatchObject({ cursor: null, hasMore: false });
     expect(lastRequest('/rest/api/3/search/jql')?.query.jql)
-      .toBe('statusCategory != Done AND assignee = currentUser() ORDER BY updated DESC');
+      .toBe('statusCategory != Done ORDER BY updated DESC');
     expect(lastRequest('/rest/api/3/search/jql')?.query.fields)
       .toContain('summary,status,priority,labels,assignee,project,updated');
   });
@@ -299,16 +300,16 @@ describe('items.list', () => {
 
   test('maps each declared state filter to a Jira status category', async () => {
     expect((await read('items.list', { ...LIST, state: 'all' })).items.map((item) => item.identifier))
-      .toEqual(['PROJ-5', 'OPS-1', 'PROJ-1', 'PROJ-3', 'PROJ-4']);
+      .toEqual(['PROJ-11', 'PROJ-10', 'PROJ-5', 'OPS-1', 'PROJ-1', 'PROJ-2', 'PROJ-3', 'PROJ-4', 'OPS-2', 'PROJ-12']);
     expect((await read('items.list', { ...LIST, state: 'todo' })).items.map((item) => item.identifier))
-      .toEqual(['PROJ-5', 'OPS-1']);
+      .toEqual(['PROJ-10', 'PROJ-5', 'OPS-1', 'PROJ-2']);
     expect((await read('items.list', { ...LIST, state: 'in-progress' })).items.map((item) => item.identifier))
-      .toEqual(['PROJ-1']);
+      .toEqual(['PROJ-11', 'PROJ-1']);
     expect((await read('items.list', { ...LIST, state: 'done' })).items.map((item) => item.identifier))
-      .toEqual(['PROJ-3', 'PROJ-4']);
+      .toEqual(['PROJ-3', 'PROJ-4', 'OPS-2', 'PROJ-12']);
   });
 
-  test('scopes any and me to the assignee and created to the reporter', async () => {
+  test('scopes me to the assignee and created to the reporter', async () => {
     expect((await read('items.list', { ...LIST, people: 'me' })).items.map((item) => item.identifier))
       .toEqual(['PROJ-5', 'OPS-1', 'PROJ-1']);
     expect((await read('items.list', { ...LIST, people: 'created' })).items.map((item) => item.identifier))
@@ -317,7 +318,7 @@ describe('items.list', () => {
 
   test('filters by priority using the site’s own priority names, and remembers them', async () => {
     const high = await read('items.list', { ...LIST, priority: 'high' });
-    expect(high.items.map((item) => item.identifier)).toEqual(['OPS-1']);
+    expect(high.items.map((item) => item.identifier)).toEqual(['PROJ-10', 'OPS-1']);
     expect(high.items[0]?.priority).toBe('high');
     const afterFirst = jira.requests.filter((request) => request.path === '/rest/api/3/priority').length;
     expect(afterFirst).toBeGreaterThan(0);
@@ -329,7 +330,7 @@ describe('items.list', () => {
 
   test('searches summaries and issue keys', async () => {
     expect((await read('items.list', { ...LIST, query: 'safari' })).items.map((item) => item.identifier))
-      .toEqual(['PROJ-1']);
+      .toEqual(['PROJ-11', 'PROJ-10', 'PROJ-1', 'PROJ-2']);
     expect((await read('items.list', { ...LIST, query: 'PROJ-1' })).items.map((item) => item.identifier))
       .toEqual(['PROJ-1']);
   });
@@ -343,13 +344,17 @@ describe('items.list', () => {
     jira.setPageSize(2);
     try {
       const first = await read('items.list', LIST);
-      expect(first.items.map((item) => item.identifier)).toEqual(['PROJ-5', 'OPS-1']);
+      expect(first.items.map((item) => item.identifier)).toEqual(['PROJ-11', 'PROJ-10']);
       expect(first.hasMore).toBe(true);
       expect(first.cursor).not.toBeNull();
 
       const second = await read('items.list', { ...LIST, cursor: first.cursor ?? undefined });
-      expect(second.items.map((item) => item.identifier)).toEqual(['PROJ-1']);
-      expect(second).toMatchObject({ cursor: null, hasMore: false });
+      expect(second.items.map((item) => item.identifier)).toEqual(['PROJ-5', 'OPS-1']);
+      expect(second.hasMore).toBe(true);
+
+      const third = await read('items.list', { ...LIST, cursor: second.cursor ?? undefined });
+      expect(third.items.map((item) => item.identifier)).toEqual(['PROJ-1', 'PROJ-2']);
+      expect(third).toMatchObject({ cursor: null, hasMore: false });
     } finally {
       jira.setPageSize(100);
     }
