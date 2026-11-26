@@ -121,7 +121,7 @@ host-side, and the site credential and session handle never reach the
 extension. It needs an upstream guest tracker read path, or a host-drawn panel.
 The design and a sketch are tracked in
 [issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
-part of 0.1.0.
+part of 0.2.0.
 
 The board's project picker is also drawn by OpenChamber. On a site with
 hundreds of projects it currently has no scrollbar, so projects past the first
