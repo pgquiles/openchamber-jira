@@ -41,7 +41,7 @@
 <main id="main">
   <div class="docs-hero">
     <div class="shell">
-      <span class="eyebrow">Documentation · v0.3.1</span>
+      <span class="eyebrow">Documentation · v0.3.2</span>
       <h1>Everything it does, and<br>everything it <em style="font-style:italic;color:var(--olive)">doesn't.</em></h1>
       <p>The Jira Cloud tracker extension for OpenChamber: install, connect, permissions, SSO policy, daily use, troubleshooting, and the limits that are deliberately left open.</p>
     </div>
@@ -128,7 +128,7 @@
           </li>
           <li>Choose <strong>Connect</strong>.</li>
         </ol>
-        <p>The extension checks <code>/rest/api/3/serverInfo</code> first and refuses non-Cloud deployments, then identifies the account through <code>/rest/api/3/myself</code>. A private site that redirects an unauthenticated request to its sign-in page is still recognized as Jira Cloud.</p>
+        <p>The extension checks <code>/rest/api/3/serverInfo</code> first and refuses non-Cloud deployments, then identifies the account through <code>/rest/api/3/myself</code>, and finally asks for one project the account can browse. An account that can see no project is refused at connect, with the fix, instead of being connected to a board that stays empty. A private site that redirects an unauthenticated request to its sign-in page is still recognized as Jira Cloud.</p>
         <p>When the card says <strong>Connected</strong>, you can turn on <strong>Project mapping</strong> and <strong>Session comments</strong> if you want those OpenChamber features.</p>
         <div class="callout">
           <span class="callout-title">The token is stored by OpenChamber</span>
@@ -138,9 +138,10 @@
         <table>
           <thead><tr><th>Symptom</th><th>What it usually means</th></tr></thead>
           <tbody>
-            <tr><td>401</td><td>The token is wrong, expired, revoked, or blocked by an organization policy. Create a new token and reconnect.</td></tr>
+            <tr><td>401</td><td>The token is wrong, revoked or expired, or a scoped token is missing a scope. Jira publishes no expiry for a personal API token, so the extension cannot warn before it lapses; the message says which case it can see. Create a token with the scope or reconnect.</td></tr>
             <tr><td>A board that worked now lists nothing</td><td>The token was revoked or expired after connecting. Jira answers a search with an empty result for an invalid credential, so the account can still read “Connected”. Create a new token and reconnect.</td></tr>
-            <tr><td>403</td><td>The account lacks a needed scope (scoped token) or Jira denied the call. Check scopes and site access.</td></tr>
+            <tr><td>403</td><td>The account or token lacks the permission for that project, or Jira denied the call. If connect says the account cannot browse any project, add it to one (or check the token scopes) and connect again.</td></tr>
+            <tr><td>404</td><td>The issue or project moved or was deleted, or this account cannot see it. Check the key in Jira and the account's project access.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL is Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
             <tr><td>Timeout or network error</td><td>OpenChamber's proxy could not reach the site. Check the URL, VPN, and proxy settings.</td></tr>
           </tbody>
@@ -158,6 +159,7 @@
             <tr><td>Post session comments</td><td>Add comments</td></tr>
           </tbody>
         </table>
+        <p>Connecting needs <strong>Browse projects</strong> somewhere on the site. A read-only token connects: <strong>Transition issues</strong> and <strong>Add comments</strong> are checked by the action that needs them, so only that action fails, with a message naming the missing permission or scope.</p>
         <h3>Scoped API tokens</h3>
         <p>If your organization requires scoped tokens, grant:</p>
         <ul>
@@ -203,7 +205,7 @@
         <div class="callout info">
           <span class="callout-title">What “rail panel” means (and why there is not one)</span>
           <p>OpenChamber's right rail is the strip of panel icons beside the chat: Git, Files, Terminal, and any extension that ships a panel page. An extension gets one by pointing <code>contributes.panel.entry</code> at an HTML page. This extension's panel has no <code>entry</code>, so no Jira icon or Jira panel appears there. The tracker contract itself only draws the board tab, the composer picker, and the detail view.</p>
-          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.3.1: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
+          <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.3.2: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
         </div>
         <h3>Status and comments</h3>
         <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's own 400 error, which names the missing fields (a custom field by display name and id; see <a href="#states">States and transitions</a>).</p>
@@ -283,8 +285,9 @@
         <table>
           <thead><tr><th>Symptom</th><th>Likely cause and fix</th></tr></thead>
           <tbody>
-            <tr><td>401 after connecting</td><td>Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect.</td></tr>
-            <tr><td>403 on connect</td><td>The account lacks <code>read:jira-user</code> (scoped token), or Jira denied the call. Check scopes and site permissions.</td></tr>
+            <tr><td>401 after connecting</td><td>The token was revoked or expired, or a scoped token is missing a scope. Jira publishes no expiry for a personal API token, so the extension cannot warn before it lapses; the message says which case it can see. Create a token with the scope or reconnect.</td></tr>
+            <tr><td>403 on connect</td><td>Jira denied the call. If the message says the account cannot browse any project, add it to one (or check the token scopes) and connect again. A read-only token is accepted.</td></tr>
+            <tr><td>404 on an issue or project</td><td>The issue or project moved or was deleted, or this account cannot see it. Check the key in Jira and the account's project access.</td></tr>
             <tr><td>Empty picker</td><td>The default view is <strong>open issues you can see</strong>. Check the state filter, project access, and that the Jira account is the one you expect. Choose <strong>Assigned to me</strong> to narrow it.</td></tr>
             <tr><td>Connected, but no issues show</td><td>Open the issues board (<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">K</span>, then <span class="kbd">B</span>) and choose the <strong>Jira</strong> tab, or use <strong>+ → Link Jira Issue</strong> in the composer. Settings shows only the connection and mapping. Typing <span class="kbd">@</span> opens file mentions, not Jira.</td></tr>
             <tr><td>Can't reach a project in the board's project picker</td><td>OpenChamber 2.8.0 draws that menu without a scrollbar when a site has many projects. This is a host bug, not the extension: <a href="https://github.com/openchamber/openchamber/pull/7430" target="_blank" rel="noopener">#7430</a> fixed it on <code>main</code>, and it ships in the next release. On 2.8.0, use the composer's <strong>+ → Link Jira Issue</strong> picker, which has a project filter and search.</td></tr>

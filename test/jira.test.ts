@@ -15,6 +15,7 @@ import {
   mapPriorityName,
   mapStatusCategory,
   priorityFilterNames,
+  refusalMessage,
 } from '../service/jira.ts';
 
 const BASE = { state: 'open', people: 'any', priority: 'all', containerId: null } as const;
@@ -258,6 +259,54 @@ describe('field names in Jira errors', () => {
   test('marks only custom-field ids for a name', () => {
     expect(['customfield_10046', 'customfield_1', 'customfield_', 'customfield_x', 'resolution']
       .map(isCustomFieldId)).toEqual([true, true, false, false, false]);
+  });
+});
+
+describe('refusal messages', () => {
+  test('sends a refused credential to Settings → Integrations', () => {
+    expect(refusalMessage(401, '', null)).toBe(
+      'Jira refused the credential (401). It may have been revoked or expired; reconnect the account in Settings → Integrations.',
+    );
+  });
+
+  test('keeps Jira’s own 401 text', () => {
+    expect(refusalMessage(401, 'You are not authenticated.', null)).toBe(
+      'Jira refused the credential (401): You are not authenticated. It may have been revoked or expired; reconnect the account in Settings → Integrations.',
+    );
+  });
+
+  test('names a missing scope instead of blaming expiry', () => {
+    expect(refusalMessage(401, 'Unauthorized; scope does not match', null)).toBe(
+      'Jira refused the credential (401): Unauthorized; scope does not match. The token is missing a scope this action needs; reconnect with a token that has it.',
+    );
+  });
+
+  test('reads a 403 as a permission problem in the project', () => {
+    expect(refusalMessage(403, 'Forbidden', null)).toBe(
+      'Jira answered 403: Forbidden. The account or token does not have permission for this project; check the project role, the token scopes, or an organization policy.',
+    );
+  });
+
+  test('reads a 404 as a missing item or lost access', () => {
+    expect(refusalMessage(404, 'Issue does not exist or you do not have permission to see it', null)).toBe(
+      'Jira answered 404: Issue does not exist or you do not have permission to see it. The issue or project may be gone, or this account cannot see it.',
+    );
+  });
+
+  test('keeps the reset time on a rate limit', () => {
+    expect(refusalMessage(429, 'Rate limit exceeded.', 30_000)).toBe(
+      'Jira rate-limited the request (429): Rate limit exceeded. Try again in 30 s.',
+    );
+  });
+
+  test('answers a rate limit without a reset time', () => {
+    expect(refusalMessage(429, '', null)).toBe('Jira rate-limited the request (429).');
+  });
+
+  test('leaves every other status as Jira worded it', () => {
+    expect(refusalMessage(400, 'customfield_10046: Gate check is required.', null))
+      .toBe('Jira answered 400: customfield_10046: Gate check is required.');
+    expect(refusalMessage(500, 'boom', null)).toBe('Jira answered 500: boom.');
   });
 });
 

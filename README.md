@@ -91,6 +91,12 @@ The token acts as your Jira user. For the features below, your account needs:
 
 Only issues you can see in Jira appear in OpenChamber.
 
+Connecting needs **Browse projects** somewhere on the site. An account that can
+see no project is refused at connect, with the fix, instead of being connected
+to a board that stays empty. A read-only token connects: **Transition issues**
+and **Add comments** are checked by the action that needs them, so only that
+action fails, with a message naming the missing permission or scope.
+
 ## Where Jira appears in OpenChamber
 
 OpenChamber 2.8.0 draws tracker UI itself. This extension does **not** add a
@@ -139,7 +145,7 @@ host-side, and the site credential and session handle never reach the
 extension. It needs an upstream guest tracker read path, or a host-drawn panel.
 The design and a sketch are tracked in
 [issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
-part of 0.3.1.
+part of 0.3.2.
 
 The board's project picker is also drawn by OpenChamber. In 2.8.0 it has no
 scrollbar on a site with hundreds of projects, so projects past the first
@@ -183,9 +189,10 @@ manifest change for Jira.
 
 | Symptom | Likely cause |
 | --- | --- |
-| 401 after connecting | Token expired, was revoked, or API token access is blocked by policy. Create a new token and reconnect. |
+| 401 after connecting | The token was revoked or expired, or a scoped token is missing a scope. Jira publishes no expiry for a personal API token, so the extension cannot warn before it lapses; the error says which case it can see. Create a token with the scope or reconnect. |
 | A board that worked now lists nothing | The token was revoked or expired after connecting. Jira answers a search with an empty result for an invalid credential, so the account can still read **Connected**; the board and the picker go empty. Create a new token and reconnect. |
-| 403 on connect | The account lacks `read:jira-user` (scoped token), or Jira denied the call. Check scopes and site permissions. |
+| 403 on connect | Jira denied the call. If the message says the account cannot browse any project, add it to one (or check the token scopes) and connect again. A read-only token is accepted. |
+| 404 on an issue or project | The issue or project moved or was deleted, or this account cannot see it. Check the key in Jira and the account's project access. A project that disappeared from the board's picker no longer grants access to the account. |
 | Empty picker | The default view is **open issues you can see**; check the state filter, project access, and that the Jira account is the one you expect. Choose **Assigned to me** to narrow it to your queue. |
 | Connected, but no issues show | Open the **issues board** (`Ctrl/Cmd+K` then `B`) and choose the **Jira** tab, or use **+ → Link Jira Issue** in the composer. Settings shows only the connection and mapping. Typing `@` opens file mentions, not Jira. |
 | Can't reach a project in the board's project picker | OpenChamber 2.8.0 draws that menu without a scrollbar when a site has many projects. This is a host bug, not the extension; it is fixed on OpenChamber `main` by [#7430](https://github.com/openchamber/openchamber/pull/7430) and ships in the next release. On 2.8.0, use the composer's **+ → Link Jira Issue** picker, which has its own project filter and search. |
@@ -299,11 +306,13 @@ Ordered by what unlocks the most:
 
 The 15-point [live verification checklist](docs/live-verification.md) was run
 against a disposable Jira Cloud site with OpenChamber 2.8.0. The 0.3.0 run
-recorded the full checklist, and 0.3.1 re-ran check 11 after
-[#26](https://github.com/pgquiles/openchamber-jira/issues/26): Jira's 400 now
-reaches the client with the required field's name and id. Results are on
-[#12](https://github.com/pgquiles/openchamber-jira/issues/12), and the
-checklist stays in the repository for the next release.
+recorded the full checklist, 0.3.1 re-ran check 11 after
+[#26](https://github.com/pgquiles/openchamber-jira/issues/26) (Jira's 400 now
+reaches the client with the required field's name and id), and 0.3.2 re-ran the
+refusal path for [#3](https://github.com/pgquiles/openchamber-jira/issues/3):
+a missing project answered HTTP 404 with the new "gone or not visible" copy.
+Results are on [#12](https://github.com/pgquiles/openchamber-jira/issues/12),
+and the checklist stays in the repository for the next release.
 
 The website lives in `site/` and deploys to GitHub Pages from `main` through
 `.github/workflows/pages.yml`. The extension has its own CI: every pull request

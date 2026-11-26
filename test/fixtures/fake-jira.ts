@@ -64,6 +64,8 @@ export type FakeJira = {
   failNextTransition: (errors: Record<string, string>) => void;
   /** Refuse the next field-catalog read. */
   failNextField: (status: number, message: string) => void;
+  /** Replace the project list, as a site or account with less access would. */
+  setProjects: (projects: Array<{ id: string; key: string; name: string }> | null) => void;
   setPageSize: (size: number) => void;
   close: () => Promise<void>;
 };
@@ -355,6 +357,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
   const failures: Array<{ status: number; message: string; headers: Record<string, string> }> = [];
   let transitionFailure: Record<string, string> | null = null;
   let fieldFailure: { status: number; message: string } | null = null;
+  let projects = PROJECTS;
   let pageSize = 100;
   let nextComment = 0;
 
@@ -545,13 +548,13 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       if (url.pathname === '/rest/api/3/project/search' && req.method === 'GET') {
         const startAt = Number(url.searchParams.get('startAt') ?? '0');
         const maxResults = Math.min(Number(url.searchParams.get('maxResults') ?? '100'), 100);
-        const page = PROJECTS.slice(startAt, startAt + maxResults);
+        const page = projects.slice(startAt, startAt + maxResults);
         send(200, {
           self: `${origin}/rest/api/3/project/search`,
           maxResults,
           startAt,
-          total: PROJECTS.length,
-          isLast: startAt + maxResults >= PROJECTS.length,
+          total: projects.length,
+          isLast: startAt + maxResults >= projects.length,
           values: page.map(projectJson),
         } as Json);
         return;
@@ -689,6 +692,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       failNext: (status, message, headers = {}) => { failures.push({ status, message, headers }); },
       failNextTransition: (errors) => { transitionFailure = errors; },
       failNextField: (status, message) => { fieldFailure = { status, message }; },
+      setProjects: (next) => { projects = next ?? PROJECTS; },
       setPageSize: (size) => { pageSize = Math.max(1, size); },
       close: () => new Promise((done) => { server.close(() => done()); }),
     });

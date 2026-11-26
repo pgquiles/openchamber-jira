@@ -27,7 +27,7 @@ import {
 } from '@openchamber/sdk';
 
 import { adfToMarkdown, markdownToAdf } from './adf.ts';
-import { buildJql, epicChildrenJql, epicLinkFieldId, escapeJqlString, explainFieldErrors, failureCode, isCustomFieldId, isEpicIssueType, isIssueKey, isProjectKey, jiraFieldNames, mapPriorityName, mapStatusCategory } from './jira.ts';
+import { buildJql, epicChildrenJql, epicLinkFieldId, escapeJqlString, explainFieldErrors, failureCode, isCustomFieldId, isEpicIssueType, isIssueKey, isProjectKey, jiraFieldNames, mapPriorityName, mapStatusCategory, refusalMessage } from './jira.ts';
 
 const port = Number(process.env.OPENCHAMBER_SERVICE_PORT);
 const serviceToken = process.env.OPENCHAMBER_SERVICE_TOKEN ?? '';
@@ -139,18 +139,9 @@ const jiraFailure = (response: SourceControlOutboundResponse): JiraFailure => {
 };
 
 const serverFailure = (response: SourceControlOutboundResponse): CallError => {
-  if (response.status === 401) {
-    return new CallError('Jira refused the credential (401).', 401, { code: failureCode(401) });
-  }
   const { detail, fields } = jiraFailure(response);
-  const verb = response.status === 429 ? 'Jira rate-limited the request' : 'Jira answered';
-  // A reset time the user can act on beats a bare status code.
-  const wait = retryAfterMs(response.headers);
-  const hint = wait === null ? '' : ` Try again in ${Math.ceil(wait / 1_000)} s.`;
-  return new CallError(`${verb} ${response.status}${detail ? `: ${detail}` : '.'}${hint}`, response.status, {
-    code: failureCode(response.status),
-    fields,
-  });
+  const message = refusalMessage(response.status, detail, retryAfterMs(response.headers));
+  return new CallError(message, response.status, { code: failureCode(response.status), fields });
 };
 
 /** A header by name, whatever its case; the host relays lower-case names. */
@@ -525,6 +516,21 @@ const handlers: Handlers = {
     const me = await api<JiraPerson>(call, 'GET', '/rest/api/3/myself');
     const id = textOf(me.accountId);
     if (!id) throw new CallError('Jira answered no account id for this credential.', 502, { code: 'JIRA_MALFORMED' });
+
+    // A credential that can read no project cannot fill the board. Refuse it
+    // here, where the message is shown, instead of leaving an empty board that
+    // looks connected. Read-only access is fine: the write permissions are
+    // proven by the action that needs them, not at connect.
+    const projects = await api<{ values?: unknown }>(call, 'GET', '/rest/api/3/project/search', {
+      query: { action: 'browse', maxResults: '1' },
+    });
+    if (!Array.isArray(projects.values) || projects.values.length === 0) {
+      throw new CallError(
+        'This Jira account cannot browse any project. Add it to a project, or check the token scopes, then connect again.',
+        403,
+        { code: 'NO_PROJECT_ACCESS' },
+      );
+    }
 
     const login = textOf(me.emailAddress) ?? textOf(me.displayName);
     const account: TrackerProviderDataByMethod['auth.verify']['account'] = { id, login };

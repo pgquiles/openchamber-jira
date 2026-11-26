@@ -266,6 +266,17 @@ describe('account', () => {
     expect(refused).toMatchObject({ ok: false, error: { status: 401, code: 'JIRA_UNAUTHORIZED' } });
   });
 
+  test('refuses an account that cannot browse any project', async () => {
+    jira.setProjects([]);
+    try {
+      const refused = await call('auth.verify', { token: 'jira-token' });
+      expect(refused).toMatchObject({ ok: false, error: { status: 403, code: 'NO_PROJECT_ACCESS' } });
+      expect(refused.ok === false && refused.error.message).toContain('cannot browse any project');
+    } finally {
+      jira.setProjects(null);
+    }
+  });
+
   test('refuses to verify a Jira Server deployment', async () => {
     const refused = await call('auth.verify', { token: 'jira-token', origin: serverDeployment.origin });
     expect(refused.ok).toBe(false);
@@ -691,6 +702,27 @@ describe('failures', () => {
     const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
     expect(refused).toMatchObject({ ok: false, error: { status: 429 } });
     expect(refused.ok === false && refused.error.message).toContain('Rate limit exceeded');
+  });
+
+  test('says a 401 may be a missing scope when Jira names one', async () => {
+    jira.failNext(401, 'Unauthorized; scope does not match');
+    const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
+    expect(refused).toMatchObject({ ok: false, error: { status: 401, code: 'JIRA_UNAUTHORIZED' } });
+    expect(refused.ok === false && refused.error.message).toContain('missing a scope');
+  });
+
+  test('points a 403 at the project role and token scopes', async () => {
+    jira.failNext(403, 'Forbidden');
+    const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
+    expect(refused).toMatchObject({ ok: false, error: { status: 403, code: 'JIRA_FORBIDDEN' } });
+    expect(refused.ok === false && refused.error.message).toContain('permission for this project');
+  });
+
+  test('reads a 404 as a missing item or lost access', async () => {
+    jira.failNext(404, 'Issue does not exist or you do not have permission to see it.');
+    const refused = await call('items.list', { token: 'jira-token', account: ACCOUNT, input: LIST });
+    expect(refused).toMatchObject({ ok: false, error: { status: 404, code: 'JIRA_NOT_FOUND' } });
+    expect(refused.ok === false && refused.error.message).toContain('cannot see it');
   });
 
   test('refuses a project key that could rewrite the query', async () => {

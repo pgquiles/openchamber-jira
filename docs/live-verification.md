@@ -31,7 +31,7 @@ Record the environment once:
 | Site | `https://<test-site>.atlassian.net` |
 | Test project | |
 | OpenChamber version | 2.8.0 |
-| Extension version | 0.3.0 (full run); 0.3.1 (check 11 re-run) |
+| Extension version | 0.3.0 (full run); 0.3.1 (check 11); 0.3.2 (refusals) |
 | Date | |
 
 ## Checklist
@@ -112,6 +112,19 @@ re-ran check 11:
   hides the revocation from the board.
 - Check 14 passed (0.3.0): reconnecting with a valid token restored the account
   and the board without reinstalling anything.
+
+After [#3](https://github.com/pgquiles/openchamber-jira/issues/3), the 0.3.2
+build re-ran the refusal path on the same site:
+
+- A workflow-state read for a project that does not exist answered HTTP 404 and
+  `{"error":"Jira answered 404: No project could be found with key 'NOPE'. The issue or project may be gone, or this account cannot see it.","code":"JIRA_NOT_FOUND"}`.
+  A real project answered 200 on the same route, so the copy did not change the
+  success path.
+- The connect-time no-project refusal and the scoped-401 copy are unit-tested
+  only: the demo site has one account with access to a project, and Atlassian
+  creates scoped tokens in its web UI, not through the API. The revoked-token
+  behavior from check 13 is unchanged: the host still invalidates the account,
+  but a revoked token's search returns an empty list rather than a 401.
 
 ## Cleanup
 
