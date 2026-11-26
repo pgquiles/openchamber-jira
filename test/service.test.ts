@@ -540,6 +540,15 @@ describe('items.updateState', () => {
     expect(JSON.parse(request?.body ?? '{}')).toEqual({ transition: { id: '22' } });
   });
 
+  test('names the fields a workflow screen requires', async () => {
+    jira.failNextTransition({ resolution: 'Resolution is required.' });
+    const refused = await call('items.updateState', {
+      token: 'jira-token', account: ACCOUNT, input: { id: 'PROJ-1', stateId: '3' },
+    });
+    expect(refused).toMatchObject({ ok: false, error: { status: 400 } });
+    expect(refused.ok === false && refused.error.message).toContain('resolution: Resolution is required.');
+  });
+
   test('refuses a status the issue cannot reach', async () => {
     // PROJ-1 is Done now; Done has no transition to Won't Do (6).
     const refused = await call('items.updateState', {

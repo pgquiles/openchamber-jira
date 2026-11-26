@@ -59,6 +59,8 @@ export type FakeJira = {
   requests: FakeJiraRequest[];
   issues: Map<string, FakeJiraIssue>;
   failNext: (status: number, message: string) => void;
+  /** Refuse the next transition like a workflow screen that needs fields. */
+  failNextTransition: (errors: Record<string, string>) => void;
   setPageSize: (size: number) => void;
   close: () => Promise<void>;
 };
@@ -348,6 +350,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
   const issues = new Map(createIssues().map((issue) => [issue.key, issue]));
   const requests: FakeJiraRequest[] = [];
   const failures: Array<{ status: number; message: string }> = [];
+  let transitionFailure: Record<string, string> | null = null;
   let pageSize = 100;
   let nextComment = 0;
 
@@ -582,6 +585,12 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
             send(400, jiraError(400, 'Transition id is not valid for this issue.').body);
             return;
           }
+          if (transitionFailure) {
+            const errors = transitionFailure;
+            transitionFailure = null;
+            send(400, { errorMessages: [], errors } as Json);
+            return;
+          }
           issue.statusId = transition.to;
           res.writeHead(204);
           res.end();
@@ -663,6 +672,7 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       requests,
       issues,
       failNext: (status, message) => { failures.push({ status, message }); },
+      failNextTransition: (errors) => { transitionFailure = errors; },
       setPageSize: (size) => { pageSize = Math.max(1, size); },
       close: () => new Promise((done) => { server.close(() => done()); }),
     });
