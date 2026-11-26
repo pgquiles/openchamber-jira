@@ -116,9 +116,9 @@ manifest change for Jira.
 
 ## What it supports
 
-- **Listing and search** through JQL (`/rest/api/3/search/jql`), most recently updated first.
-  The default is open issues assigned to the signed-in user; search matches
-  summaries and issue keys.
+- **Listing and search** through JQL (`/rest/api/3/search/jql`), most recently
+  updated first. The default is open issues you can see; choose **Assigned to
+  me** for your own queue. Search matches summaries and issue keys.
 - **State filters** `open`, `all`, `todo`, `in-progress`, `done`, mapped to
   Jira status categories. `canceled` is not offered because Jira has no native
   canceled category; canceled statuses report as `done`.
