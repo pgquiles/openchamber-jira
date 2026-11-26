@@ -98,8 +98,8 @@ picker's preview is for choosing an issue and is read-only, so it has no state
 menu. In the board's detail (the side preview or the issue tab), the state pill
 in the header is a menu. Pick another workflow state and the extension resolves
 the issue's available transition. If Jira asks for fields the transition needs,
-the change fails with Jira's own error; that step has to be finished in Jira
-(issue #13).
+the change fails with Jira's own error, which names the missing fields; finish
+that step in Jira from the issue's header link.
 
 **Comments are read-only.** OpenChamber 2.8.0 shows an issue's comments but
 draws no composer for tracker items. The tracker contract's `comments.create`
@@ -222,8 +222,10 @@ manifest change for Jira.
   Jira's next page token.
 - Transition screens that demand extra fields (resolution, comment, custom
   fields) cannot be completed through the tracker contract. Jira's own error is
-  shown instead of guessing values.
+  shown instead of guessing values; it names the fields, and the issue header
+  opens the item in Jira to finish the step.
 - Rate limits (HTTP 429) and other Jira errors are surfaced as-is, not retried.
+  Duplicate reads are coalesced by OpenChamber's read cache.
 - The extension does not create, edit, or delete issues, and does not handle
   attachments. Images embedded in a description are left out of the Markdown.
 - Project mapping and session comments are optional OpenChamber features; turn
@@ -250,16 +252,16 @@ Ordered by what unlocks the most:
    ([#16](https://github.com/pgquiles/openchamber-jira/issues/16)). Needs a
    guest tracker read path upstream; the sketch is in
    [`docs/mockups/rail-panel.png`](docs/mockups/rail-panel.png).
-5. **Richer Jira content**: show images and attachments as links, render panels
-   and expandos, keep mentions readable, and surface sprint/story points where
-   the contract allows
+5. **Richer Jira content**: show images and attachments as links, keep panel
+   and expando context, and surface sprint/story points where the contract
+   allows
    ([#5](https://github.com/pgquiles/openchamber-jira/issues/5),
    [#6](https://github.com/pgquiles/openchamber-jira/issues/6)).
-6. **Rate-limit handling**: honor `Retry-After`, coalesce duplicate reads, and
-   back off on 429 without hiding the failure from the user
+6. **Rate-limit handling**: honor `Retry-After` and back off on 429 without
+   hiding the failure from the user (duplicate reads are already coalesced)
    ([#4](https://github.com/pgquiles/openchamber-jira/issues/4)).
-7. **CI and releases**: GitHub Actions for typecheck, tests, guest check, ZIP
-   artifact, and tagged releases
+7. **CI and release automation**: GitHub Actions for typecheck, tests, guest
+   check, ZIP artifact, pull-request checks, and tagged releases
    ([#10](https://github.com/pgquiles/openchamber-jira/issues/10)).
 8. **Multiple Jira sites per OpenChamber** through `multipleAccounts`, useful for
    contractors and shared workstations

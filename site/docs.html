@@ -208,7 +208,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <p>A Jira rail panel would be an extra view — for example, a list of issues assigned to you that opens from a Jira icon. The idea, with a sketch, is tracked in <a href="https://github.com/pgquiles/openchamber-jira/issues/16" target="_blank" rel="noopener">issue #16</a>. It is not in 0.1.0: a guest page cannot read tracker items today, because the tracker API is host-side and the credential and session handle stay in OpenChamber. It waits on an upstream guest read path or a host-drawn panel.</p>
         </div>
         <h3>Status and comments</h3>
-        <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's error (see <a href="#states">States and transitions</a>).</p>
+        <p>Open the issue from the issues board. The composer picker's preview is for choosing an issue and stays read-only; the board's detail (side preview or issue tab) has the state menu. Click the state pill in the header to move the issue. The extension resolves the issue's available transition and sends only the destination; a transition screen that needs fields fails with Jira's error, which names the missing fields (see <a href="#states">States and transitions</a>).</p>
         <p>Comments are shown but not writable in OpenChamber 2.8.0. The tracker contract's <code>comments.create</code> is used only by the optional session comments, which post a summary when a session starts, finishes, or fails. A user comment box for tracker items is a host gap, tracked in <a href="https://github.com/openchamber/openchamber/issues/7641" target="_blank" rel="noopener">openchamber#7641</a>.</p>
         <h3>Long project lists</h3>
         <p>The board's project picker is also drawn by OpenChamber. With hundreds of Jira projects it has no scrollbar in 2.8.0, so projects after the first screenful cannot be reached. That is a host bug (<a href="https://github.com/openchamber/openchamber/issues/7642" target="_blank" rel="noopener">openchamber#7642</a>, tracked here as <a href="https://github.com/pgquiles/openchamber-jira/issues/15" target="_blank" rel="noopener">issue #15</a>). The composer's picker has its own project filter and search and is unaffected.</p>
@@ -259,7 +259,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
         <p>To change state, the extension reads the issue's available transitions and picks the one whose destination is the status you chose. It does not invent a transition or fall back to a different status.</p>
         <div class="callout warn">
           <span class="callout-title">Workflow screens</span>
-          <p>Some transitions require a screen with fields — resolution, a comment, a custom field. The tracker contract sends only the destination, so the extension cannot complete that step. Jira's error is shown instead of guessing values. Finish the transition in Jira; the deadline for a richer flow is <a href="https://github.com/pgquiles/openchamber-jira/issues/13" target="_blank" rel="noopener">issue #13</a>.</p>
+          <p>Some transitions require a screen with fields — resolution, a comment, a custom field. The tracker contract sends only the destination, so the extension cannot complete that step. Jira's error is shown instead of guessing values, and it names the missing fields. The issue header links to Jira, where the transition can be finished. Rendering the screen needs the contract to accept transition fields.</p>
         </div>
       </section>
 
@@ -294,7 +294,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
             <tr><td>Issue missing from search</td><td>Search is scoped to the selected project/state filters. Try <strong>All states</strong> and <strong>Anyone</strong>, and confirm the issue is visible to the same account in Jira.</td></tr>
             <tr><td>429</td><td>Jira rate-limited the site. Wait for the <code>Retry-After</code> interval; the extension surfaces the error rather than retrying silently.</td></tr>
             <tr><td>“Only Jira Cloud is supported”</td><td>The URL points at Jira Server or Data Center, or <code>serverInfo</code> reports another deployment type.</td></tr>
-            <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Complete that step in Jira (see <a href="#states">States</a>).</td></tr>
+            <tr><td>A transition fails</td><td>The workflow screen requires fields the tracker contract cannot fill. Jira's error names them; open the issue from the header link and complete that step in Jira (see <a href="#states">States</a>).</td></tr>
             <tr><td>Comments look short</td><td>Only the newest comments fit the response budget; the oldest were left out. Read the full thread in Jira.</td></tr>
             <tr><td>The extension does not appear in Settings</td><td>Check that the manifest was added (folder or ZIP) and that the local service was allowed. OpenChamber must be 2.8.0 or newer.</td></tr>
           </tbody>
@@ -325,7 +325,7 @@ npm run zip      # optional: openchamber-jira.zip</code></pre>
           <tbody>
             <tr><td>Deployment</td><td>Jira Cloud only; Server and Data Center are refused.</td><td>—</td></tr>
             <tr><td>Authoring</td><td>No create, edit, or delete; no assignee or priority changes.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a></td></tr>
-            <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/13" target="_blank" rel="noopener">#13</a></td></tr>
+            <tr><td>Workflow screens</td><td>Transitions that demand fields cannot be completed here; Jira's error names them and the issue header opens Jira.</td><td>—</td></tr>
             <tr><td>Rate limits</td><td>429 is shown, not retried; no <code>Retry-After</code> wait.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/4" target="_blank" rel="noopener">#4</a></td></tr>
             <tr><td>Rich content</td><td>Images and attachments omitted; panels and expandos simplified.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/5" target="_blank" rel="noopener">#5</a></td></tr>
             <tr><td>Custom fields</td><td>Sprint, story points, and due date are not in the preview.</td><td><a href="https://github.com/pgquiles/openchamber-jira/issues/6" target="_blank" rel="noopener">#6</a></td></tr>
@@ -374,7 +374,7 @@ npm run zip         # openchamber-jira.zip</code></pre>
           <li><strong>Create and edit issues</strong> — needs the tracker contract to grow (<a href="https://github.com/pgquiles/openchamber-jira/issues/2" target="_blank" rel="noopener">#2</a>).</li>
           <li><strong>Token health</strong> — expiry, scopes, and a clear needs-attention state (<a href="https://github.com/pgquiles/openchamber-jira/issues/3" target="_blank" rel="noopener">#3</a>).</li>
           <li><strong>Live verification</strong> against a real Jira Cloud site, and real screenshots (<a href="https://github.com/pgquiles/openchamber-jira/issues/12" target="_blank" rel="noopener">#12</a>).</li>
-          <li><strong>CI and releases</strong> — typecheck, tests, guest check, ZIP artifacts, tags (<a href="https://github.com/pgquiles/openchamber-jira/issues/10" target="_blank" rel="noopener">#10</a>).</li>
+          <li><strong>CI for pull requests and tagged releases</strong> — typecheck, tests, guest check, ZIP artifacts, and branch protection (<a href="https://github.com/pgquiles/openchamber-jira/issues/10" target="_blank" rel="noopener">#10</a>).</li>
         </ol>
         <p>See all <a href="https://github.com/pgquiles/openchamber-jira/issues" target="_blank" rel="noopener">open issues and labels</a> for the full list.</p>
         <p class="next-prev"><a href="index.html">← Back to the overview</a><a href="index.html#install">Install →</a></p>
