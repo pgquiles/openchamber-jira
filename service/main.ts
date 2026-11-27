@@ -27,7 +27,7 @@ import {
 } from '@openchamber/sdk';
 
 import { adfToMarkdown, markdownToAdf } from './adf.ts';
-import { buildJql, epicChildrenJql, epicLinkFieldId, escapeJqlString, explainFieldErrors, failureCode, isCustomFieldId, isEpicIssueType, isIssueKey, isProjectKey, jiraFieldNames, mapPriorityName, mapStatusCategory, refusalMessage } from './jira.ts';
+import { buildJql, epicChildrenJql, epicLinkFieldId, escapeJqlString, explainFieldErrors, failureCode, isCustomFieldId, isEpicIssueType, isIssueKey, isProjectKey, jiraFieldNames, jiraFieldSearchName, mapPriorityName, mapStatusCategory, refusalMessage } from './jira.ts';
 
 const port = Number(process.env.OPENCHAMBER_SERVICE_PORT);
 const serviceToken = process.env.OPENCHAMBER_SERVICE_TOKEN ?? '';
@@ -710,7 +710,14 @@ const handlers: Handlers = {
 };
 
 const FIELD_NAME_TTL_MS = 5 * 60 * 1000;
+/** A failed read, or a lookup that found nothing, is retried sooner. */
+const FIELD_NAME_RETRY_MS = 60 * 1000;
+const FIELD_SEARCH_MAX = 10;
 const fieldNameCache = new Map<string, { names: Map<string, string> | null; expiresAt: number }>();
+/** Names found only by an exact-id search, for ids the site's `/field` answer
+ * did not have yet (a field newly associated with the field scheme, or a list
+ * read before Jira began returning it). */
+const fieldSearchCache = new Map<string, { name: string | null; expiresAt: number }>();
 
 /**
  * A site's field display names, read once and kept for a few minutes. A failed
@@ -730,8 +737,47 @@ const fieldNamesFor = async (call: Call): Promise<Map<string, string> | null> =>
     names,
     // A site that could not be read is worth retrying sooner than one that
     // simply has no custom fields.
-    expiresAt: Date.now() + (names === null ? 60_000 : FIELD_NAME_TTL_MS),
+    expiresAt: Date.now() + (names === null ? FIELD_NAME_RETRY_MS : FIELD_NAME_TTL_MS),
   });
+  return names;
+};
+
+/**
+ * The names `/field` left out, one exact-id search at a time. A lookup that
+ * fails is not fatal: the caller keeps the raw id, and the id is retried after
+ * a minute rather than on every failure on the same screen.
+ */
+const missingFieldNamesFor = async (
+  call: Call,
+  ids: readonly string[],
+  known: ReadonlyMap<string, string>,
+): Promise<Map<string, string>> => {
+  const names = new Map<string, string>();
+  const missing = [...new Set(ids)]
+    .filter((id) => isCustomFieldId(id) && !known.has(id))
+    .slice(0, FIELD_SEARCH_MAX);
+  for (const id of missing) {
+    const key = `${call.instance}\n${id}`;
+    const cached = fieldSearchCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      if (cached.name) names.set(id, cached.name);
+      continue;
+    }
+    let name: string | null = null;
+    try {
+      name = jiraFieldSearchName(
+        await api<unknown>(call, 'GET', '/rest/api/3/field/search', { query: { query: id } }),
+        id,
+      );
+    } catch {
+      name = null;
+    }
+    fieldSearchCache.set(key, {
+      name,
+      expiresAt: Date.now() + (name === null ? FIELD_NAME_RETRY_MS : FIELD_NAME_TTL_MS),
+    });
+    if (name) names.set(id, name);
+  }
   return names;
 };
 
@@ -763,6 +809,8 @@ const answer = async <M extends TrackerProviderMethod>(
     if (failure instanceof CallError && failure.fields.length > 0) {
       const names = await fieldNamesFor(call);
       if (names) {
+        const missing = await missingFieldNamesFor(call, failure.fields, names);
+        for (const [id, name] of missing) names.set(id, name);
         failure = new CallError(explainFieldErrors(failure.message, failure.fields, names), failure.status, {
           code: failure.code,
         });

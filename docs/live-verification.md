@@ -31,7 +31,7 @@ Record the environment once:
 | Site | `https://<test-site>.atlassian.net` |
 | Test project | |
 | OpenChamber version | 2.8.0 |
-| Extension version | 0.3.0 (full run); 0.3.1 (check 11); 0.3.2 (refusals) |
+| Extension version | 0.3.0 (full run); 0.3.1 (check 11); 0.3.2 (refusals); 0.3.3 (field-name lookup) |
 | Date | |
 
 ## Checklist
@@ -125,6 +125,40 @@ build re-ran the refusal path on the same site:
   creates scoped tokens in its web UI, not through the API. The revoked-token
   behavior from check 13 is unchanged: the host still invalidates the account,
   but a revoked token's search returns an empty list rather than a 401.
+
+On 2026-11-27, the 0.3.3 build re-ran the field-name part of check 11 for
+[#33](https://github.com/pgquiles/openchamber-jira/issues/33) and corrected the
+0.3.1 note above:
+
+- A custom field added only to the Resolve Issue Screen (`customfield_10059`,
+  "Fallback probe") stayed out of `/rest/api/3/field` while it was not
+  associated with the project's field scheme — absent at 0 s and again at
+  45 s, catalog size 89 both times. `/rest/api/3/field/search?query=customfield_10059`
+  returned exactly that field, and a search for a non-existent id returned
+  none.
+- Associating it with the field scheme (the field-scheme API, not the
+  deprecated field-configuration one) did not add it to `/field` at once;
+  `/field` listed it afterwards (90 fields) and still listed it a minute after
+  the required flag was cleared. Requiredness lives in the field scheme, so a
+  field a transition screen requires is associated, and an associated field
+  reaches `/field`.
+- The 400 itself could not be repeated: none of OCT-3's transitions is wired to
+  the Resolve Issue Screen any more, so the required field did not fail a
+  transition. The 0.3.1 400 above remains the recorded evidence for that error
+  path.
+- The real bundle connected and moved an issue through Jira with a harness that
+  plays OpenChamber's outbound proxy (handle to the site origin, Basic
+  credential, method allow-list): `auth.verify` answered 200, and the Done and
+  In Progress transitions answered 200.
+- Cleanup: the probe field was removed from the screen, unrequired,
+  unassociated and deleted; the catalog returned to 89 fields, no probe field
+  matched `/field/search`, and OCT-3 was back In Progress.
+
+So `#33`'s fallback does not repair a permanent Jira omission of
+transition-only fields; that omission does not exist for a field a transition
+can require. It covers an id the *cached* catalog lacks: `/field` is cached for
+five minutes, and Jira needs a short time to list a newly associated field.
+The 0.3.1 release note and the first version of #33 overstated the case.
 
 ## Cleanup
 
