@@ -829,6 +829,16 @@ var jiraFieldNames = (fields) => {
   }
   return names;
 };
+var jiraFieldSearchName = (payload, id) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    return null;
+  const values = payload.values;
+  if (!Array.isArray(values))
+    return null;
+  const field = values.find((entry) => entry?.id === id);
+  const name = typeof field?.name === "string" ? field.name.trim() : "";
+  return name === "" || name === id ? null : name;
+};
 var explainFieldErrors = (message, ids, names) => {
   let explained = message;
   for (const id of ids) {
@@ -1485,7 +1495,10 @@ var handlers = {
   }
 };
 var FIELD_NAME_TTL_MS = 5 * 60 * 1000;
+var FIELD_NAME_RETRY_MS = 60 * 1000;
+var FIELD_SEARCH_MAX = 10;
 var fieldNameCache = new Map;
+var fieldSearchCache = new Map;
 var fieldNamesFor = async (call) => {
   const cached = fieldNameCache.get(call.instance);
   if (cached && cached.expiresAt > Date.now())
@@ -1498,8 +1511,35 @@ var fieldNamesFor = async (call) => {
   }
   fieldNameCache.set(call.instance, {
     names,
-    expiresAt: Date.now() + (names === null ? 60000 : FIELD_NAME_TTL_MS)
+    expiresAt: Date.now() + (names === null ? FIELD_NAME_RETRY_MS : FIELD_NAME_TTL_MS)
   });
+  return names;
+};
+var missingFieldNamesFor = async (call, ids, known) => {
+  const names = new Map;
+  const missing = [...new Set(ids)].filter((id) => isCustomFieldId(id) && !known.has(id)).slice(0, FIELD_SEARCH_MAX);
+  for (const id of missing) {
+    const key = `${call.instance}
+${id}`;
+    const cached = fieldSearchCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      if (cached.name)
+        names.set(id, cached.name);
+      continue;
+    }
+    let name = null;
+    try {
+      name = jiraFieldSearchName(await api(call, "GET", "/rest/api/3/field/search", { query: { query: id } }), id);
+    } catch {
+      name = null;
+    }
+    fieldSearchCache.set(key, {
+      name,
+      expiresAt: Date.now() + (name === null ? FIELD_NAME_RETRY_MS : FIELD_NAME_TTL_MS)
+    });
+    if (name)
+      names.set(id, name);
+  }
   return names;
 };
 var failureOf = (error) => {
@@ -1528,6 +1568,9 @@ var answer = async (method, call, input) => {
     if (failure instanceof CallError && failure.fields.length > 0) {
       const names = await fieldNamesFor(call);
       if (names) {
+        const missing = await missingFieldNamesFor(call, failure.fields, names);
+        for (const [id, name] of missing)
+          names.set(id, name);
         failure = new CallError(explainFieldErrors(failure.message, failure.fields, names), failure.status, {
           code: failure.code
         });

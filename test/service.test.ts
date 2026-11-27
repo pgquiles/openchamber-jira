@@ -28,6 +28,7 @@ const PROVIDER = 'ext-jira-tracker';
 const READ_ONLY: readonly string[] = ['GET'];
 const ACCOUNT = { id: 'acc-1', login: 'mona@example.com' };
 const LIST: TrackerProviderInputs['items.list'] = { state: 'open', people: 'any', priority: 'all', containerId: null };
+const fieldSearches = (site: FakeJira) => site.requests.filter((request) => request.path === '/rest/api/3/field/search');
 
 type Grant = { origin: string; token: string | null; email: string; methods: readonly string[] };
 type CallOptions<M extends TrackerProviderMethod> = {
@@ -599,6 +600,96 @@ describe('items.updateState', () => {
     expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
     expect(refused.ok === false && refused.error.message)
       .toBe('Jira answered 400: Gate check (customfield_10046): Gate check is required.');
+    expect(fieldSearches(jira)).toHaveLength(0);
+  });
+
+  test('names a required field that the field catalog omits', async () => {
+    const site = await startFakeJira();
+    try {
+      site.failNextTransition({ customfield_10047: 'Change reason is required.' });
+      const refused = await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: site.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+      expect(refused.ok === false && refused.error.message)
+        .toBe('Jira answered 400: Change reason (customfield_10047): Change reason is required.');
+      expect(fieldSearches(site).map((request) => request.query.query)).toEqual(['customfield_10047']);
+    } finally {
+      await site.close();
+    }
+  });
+
+  test('keeps the id when the field search fails', async () => {
+    const site = await startFakeJira();
+    try {
+      site.failNextFieldSearch(403, 'The field search is forbidden.');
+      site.failNextTransition({ customfield_10047: 'Change reason is required.' });
+      const refused = await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: site.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+      expect(refused.ok === false && refused.error.message)
+        .toBe('Jira answered 400: customfield_10047: Change reason is required.');
+    } finally {
+      await site.close();
+    }
+  });
+
+  test('names the fields whose lookup succeeds when another fails', async () => {
+    const site = await startFakeJira();
+    try {
+      site.failNextFieldSearch(500, 'The field search is down.');
+      site.failNextTransition({
+        customfield_90001: 'First is required.',
+        customfield_10047: 'Change reason is required.',
+      });
+      const refused = await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: site.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+      expect(refused.ok === false && refused.error.message).toBe(
+        'Jira answered 400: customfield_90001: First is required. '
+        + 'Change reason (customfield_10047): Change reason is required.',
+      );
+      expect(fieldSearches(site).map((request) => request.query.query))
+        .toEqual(['customfield_90001', 'customfield_10047']);
+    } finally {
+      await site.close();
+    }
+  });
+
+  test('reuses a searched field name for a later failure', async () => {
+    const site = await startFakeJira();
+    try {
+      site.failNextTransition({ customfield_10047: 'Change reason is required.' });
+      await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: site.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      site.failNextTransition({ customfield_10047: 'Change reason is required.' });
+      const refused = await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: site.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      expect(refused.ok === false && refused.error.message)
+        .toBe('Jira answered 400: Change reason (customfield_10047): Change reason is required.');
+      expect(fieldSearches(site)).toHaveLength(1);
+    } finally {
+      await site.close();
+    }
+  });
+
+  test('looks up at most ten missing fields', async () => {
+    const site = await startFakeJira();
+    try {
+      const ids = Array.from({ length: 12 }, (_, index) => `customfield_${90_001 + index}`);
+      site.failNextTransition(Object.fromEntries(ids.map((id) => [id, 'Required.'])));
+      const refused = await call('items.updateState', {
+        token: 'jira-token', account: ACCOUNT, origin: site.origin, input: { id: 'PROJ-1', stateId: '5' },
+      });
+      expect(refused).toMatchObject({ ok: false, error: { status: 400, code: 'JIRA_REJECTED' } });
+      expect(fieldSearches(site).map((request) => request.query.query)).toEqual(ids.slice(0, 10));
+    } finally {
+      await site.close();
+    }
   });
 
   test('keeps the id and the status when the field catalog cannot be read', async () => {
@@ -613,6 +704,7 @@ describe('items.updateState', () => {
       expect(refused.ok === false && refused.error.message)
         .toBe('Jira answered 400: customfield_10046: Gate check is required.');
       expect(away.requests.filter((request) => request.path === '/rest/api/3/field')).toHaveLength(1);
+      expect(fieldSearches(away)).toHaveLength(0);
     } finally {
       await away.close();
     }

@@ -147,6 +147,17 @@ export const jiraFieldNames = (fields: unknown): Map<string, string> => {
   return names;
 };
 
+/** The display name of the field with `id` in a `/field/search` answer. The
+ * search matches loosely, so only the exact id counts. */
+export const jiraFieldSearchName = (payload: unknown, id: string): string | null => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const values = (payload as { values?: unknown }).values;
+  if (!Array.isArray(values)) return null;
+  const field = (values as JiraField[]).find((entry) => entry?.id === id);
+  const name = typeof field?.name === 'string' ? field.name.trim() : '';
+  return name === '' || name === id ? null : name;
+};
+
 /**
  * Rewrite the custom-field ids in a Jira error into the names the user sees,
  * keeping the id in parentheses so it stays searchable. System fields already

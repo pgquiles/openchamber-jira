@@ -145,15 +145,16 @@ host-side, and the site credential and session handle never reach the
 extension. It needs an upstream guest tracker read path, or a host-drawn panel.
 The design and a sketch are tracked in
 [issue #16](https://github.com/pgquiles/openchamber-jira/issues/16); it is not
-part of 0.3.2.
+part of 0.3.3.
 
-The board's project picker is also drawn by OpenChamber. In 2.8.0 it has no
+The board's project picker is also drawn by OpenChamber. In 2.8.0 it had no
 scrollbar on a site with hundreds of projects, so projects past the first
-screenful cannot be reached. That is an OpenChamber bug, already fixed on
-`main` by [#7430](https://github.com/openchamber/openchamber/pull/7430); the
-fix ships in the first release after 2.8.0. Until then, use the composer
-picker, which has its own project filter and search. Tracked as
-[issue #15](https://github.com/pgquiles/openchamber-jira/issues/15).
+screenful could not be reached. That is an OpenChamber bug, fixed in
+[2.8.1](https://github.com/openchamber/openchamber/releases/tag/v2.8.1) by
+[#7430](https://github.com/openchamber/openchamber/pull/7430). On 2.8.0, use
+the composer picker, which has its own project filter and search. Tracked as
+[issue #15](https://github.com/pgquiles/openchamber-jira/issues/15), closed
+when 2.8.1 shipped.
 
 ## Authentication and SSO
 
@@ -241,11 +242,11 @@ manifest change for Jira.
   ([openchamber#7641](https://github.com/openchamber/openchamber/issues/7641)).
   The extension implements `comments.create`; OpenChamber currently calls it
   only for session comments.
-- The board's project picker is drawn by OpenChamber and has no scrollbar on
+- The board's project picker is drawn by OpenChamber and had no scrollbar on
   2.8.0 with long container lists. The extension returns the projects, but
-  cannot style that menu. Upstream fixed it on `main` in
-  [#7430](https://github.com/openchamber/openchamber/pull/7430); 2.8.0 is the
-  only affected release, tracked as
+  cannot style that menu. Fixed upstream in
+  [#7430](https://github.com/openchamber/openchamber/pull/7430) and shipped in
+  OpenChamber 2.8.1; tracked as
   [#15](https://github.com/pgquiles/openchamber-jira/issues/15).
 - The picker reads up to 100 issues per page; more pages are available through
   Jira's next page token.
@@ -254,6 +255,13 @@ manifest change for Jira.
   shown instead of guessing values; it names the fields (a custom field by
   display name and id), and the issue header opens the item in Jira to finish
   the step.
+- Field names for that error come from `/rest/api/3/field`, cached for five
+  minutes per site. When the cached catalog does not have an id Jira named, the
+  extension asks `/field/search` for the exact id, one id at a time, up to ten
+  per failure, and keeps the raw id if the lookup fails. A *renamed* field is
+  not covered: an id the catalog already knows keeps its old name until the
+  cache expires
+  ([#34](https://github.com/pgquiles/openchamber-jira/issues/34)).
 - Reads that Jira rate-limits (429, or 503 with `Retry-After`) are retried, up
   to three attempts and 10 seconds total. Writes are never retried, so a
   comment or transition cannot be duplicated; when the retries run out, the
@@ -311,6 +319,12 @@ recorded the full checklist, 0.3.1 re-ran check 11 after
 reaches the client with the required field's name and id), and 0.3.2 re-ran the
 refusal path for [#3](https://github.com/pgquiles/openchamber-jira/issues/3):
 a missing project answered HTTP 404 with the new "gone or not visible" copy.
+0.3.3 measured what `/rest/api/3/field` actually omits after
+[#33](https://github.com/pgquiles/openchamber-jira/issues/33) and corrected the
+0.3.1 note: a field stays out of the catalog while it is not associated with
+the project's field scheme, and reaches the catalog once it is, which is what a
+transition that requires it needs. The exact-id `/field/search` fallback covers
+the window in between and the extension's own five-minute cache.
 Results are on [#12](https://github.com/pgquiles/openchamber-jira/issues/12),
 and the checklist stays in the repository for the next release.
 

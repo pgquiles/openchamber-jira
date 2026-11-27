@@ -64,6 +64,10 @@ export type FakeJira = {
   failNextTransition: (errors: Record<string, string>) => void;
   /** Refuse the next field-catalog read. */
   failNextField: (status: number, message: string) => void;
+  /** Refuse the next field-search read. */
+  failNextFieldSearch: (status: number, message: string) => void;
+  /** Fields that `/field` omits but `/field/search` can find. */
+  setSearchOnlyFields: (fields: Array<{ id: string; name: string }> | null) => void;
   /** Replace the project list, as a site or account with less access would. */
   setProjects: (projects: Array<{ id: string; key: string; name: string }> | null) => void;
   setPageSize: (size: number) => void;
@@ -357,6 +361,8 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
   const failures: Array<{ status: number; message: string; headers: Record<string, string> }> = [];
   let transitionFailure: Record<string, string> | null = null;
   let fieldFailure: { status: number; message: string } | null = null;
+  let fieldSearchFailure: { status: number; message: string } | null = null;
+  let searchOnlyFields = [{ id: 'customfield_10047', name: 'Change reason' }];
   let projects = PROJECTS;
   let pageSize = 100;
   let nextComment = 0;
@@ -539,6 +545,23 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
         return;
       }
 
+      if (url.pathname === '/rest/api/3/field/search' && req.method === 'GET') {
+        if (fieldSearchFailure) {
+          const failure = fieldSearchFailure;
+          fieldSearchFailure = null;
+          send(failure.status, jiraError(failure.status, failure.message).body);
+          return;
+        }
+        const query = (url.searchParams.get('query') ?? '').trim().toLowerCase();
+        const values = query === ''
+          ? []
+          : searchOnlyFields.filter((field) => (
+            field.id.toLowerCase() === query || field.name.toLowerCase().includes(query)
+          ));
+        send(200, { values, total: values.length, isLast: true } as Json);
+        return;
+      }
+
       if (url.pathname === '/rest/api/3/search/jql' && req.method === 'GET') {
         const answer = search(url, 'acc-1');
         send(answer.status, answer.body);
@@ -692,6 +715,8 @@ export const startFakeJira = ({ token = 'jira-token', email = 'mona@example.com'
       failNext: (status, message, headers = {}) => { failures.push({ status, message, headers }); },
       failNextTransition: (errors) => { transitionFailure = errors; },
       failNextField: (status, message) => { fieldFailure = { status, message }; },
+      failNextFieldSearch: (status, message) => { fieldSearchFailure = { status, message }; },
+      setSearchOnlyFields: (next) => { searchOnlyFields = next ?? []; },
       setProjects: (next) => { projects = next ?? PROJECTS; },
       setPageSize: (size) => { pageSize = Math.max(1, size); },
       close: () => new Promise((done) => { server.close(() => done()); }),
